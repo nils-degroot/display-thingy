@@ -13,6 +13,9 @@ src/display_thingy/
 ├── assets/fonts/        # Inter font family (Regular, Medium, Bold)
 └── views/
     ├── __init__.py      # BaseView, ViewRegistry, auto-discovery
+    ├── _render.py       # Shared rendering: font, constants, header/border/overflow/truncation/error
+    ├── _caldav.py       # Shared CalDAV: collection discovery, response parsing
+    ├── _wiki.py         # Shared wiki markup stripping
     ├── calendar.py      # CalDAV agenda (7-day upcoming events)
     ├── weather.py       # OpenWeatherMap current + 7-day forecast
     ├── wikipedia_potd.py # Wikimedia Picture of the Day

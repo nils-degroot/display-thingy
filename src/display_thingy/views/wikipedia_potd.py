@@ -13,23 +13,19 @@ from datetime import date
 import httpx
 from PIL import Image, ImageDraw, ImageFont
 
-from display_thingy.config import FONTS_DIR
 from display_thingy.views import BaseView, registry
+from display_thingy.views._render import (
+    BLACK,
+    HEADER_HEIGHT,
+    WHITE,
+    draw_border,
+    draw_header,
+)
+from display_thingy.views._render import (
+    font as _font,
+)
 
 log = logging.getLogger(__name__)
-
-# --- Fonts ---
-
-_font_cache: dict[tuple[str, int], ImageFont.FreeTypeFont] = {}
-
-
-def _font(weight: str = "Regular", size: int = 16) -> ImageFont.FreeTypeFont:
-    """Load an Inter font at the given size, with caching."""
-    key = (weight, size)
-    if key not in _font_cache:
-        path = FONTS_DIR / f"Inter-{weight}.ttf"
-        _font_cache[key] = ImageFont.truetype(str(path), size)
-    return _font_cache[key]
 
 
 # --- Data model ---
@@ -118,11 +114,7 @@ def fetch_potd(today: date | None = None) -> PictureOfTheDay:
 
 # --- Renderer ---
 
-BLACK = 0
-WHITE = 1
-
 # Layout constants
-HEADER_HEIGHT = 35
 CAPTION_HEIGHT = 75
 CAPTION_PADDING = 10
 
@@ -187,18 +179,8 @@ def render_potd(potd: PictureOfTheDay, width: int, height: int) -> Image.Image:
     image_area_h = height - HEADER_HEIGHT - CAPTION_HEIGHT
 
     # ── Header ──
-    header_font = _font("Bold", 18)
-    date_font = _font("Regular", 16)
-
-    draw.text((15, 8), "Picture of the Day", fill=BLACK, font=header_font)
-
     today_str = date.today().strftime("%B %-d, %Y")
-    date_bbox = draw.textbbox((0, 0), today_str, font=date_font)
-    date_w = date_bbox[2] - date_bbox[0]
-    draw.text((width - date_w - 15, 10), today_str, fill=BLACK, font=date_font)
-
-    # Header divider
-    draw.line([(0, HEADER_HEIGHT), (width, HEADER_HEIGHT)], fill=BLACK, width=1)
+    draw_header(draw, width, "Picture of the Day", today_str)
 
     # ── Image area ──
     # Convert to grayscale, crop to fill the image area, then dither to 1-bit.
@@ -245,7 +227,7 @@ def render_potd(potd: PictureOfTheDay, width: int, height: int) -> Image.Image:
         draw.text((CAPTION_PADDING, y), line, fill=BLACK, font=caption_font)
 
     # ── Outer border ──
-    draw.rectangle([(0, 0), (width - 1, height - 1)], outline=BLACK, width=2)
+    draw_border(draw, width, height)
 
     return img
 

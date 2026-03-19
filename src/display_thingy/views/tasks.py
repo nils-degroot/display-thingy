@@ -10,36 +10,34 @@ Baikal, etc.) — not just Nextcloud.
 from __future__ import annotations
 
 import logging
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from typing import TYPE_CHECKING
 
 import httpx
 import icalendar
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
-from display_thingy.config import FONTS_DIR
 from display_thingy.views import BaseView, registry
+from display_thingy.views._caldav import discover_collections, parse_calendar_responses
+from display_thingy.views._render import (
+    BLACK,
+    HEADER_HEIGHT,
+    WHITE,
+    draw_border,
+    draw_header,
+    draw_overflow_bar,
+    render_error,
+    truncate_text,
+)
+from display_thingy.views._render import (
+    font as _font,
+)
 
 if TYPE_CHECKING:
     from display_thingy.config import Settings
 
 log = logging.getLogger(__name__)
-
-
-# ── Fonts ──
-
-_font_cache: dict[tuple[str, int], ImageFont.FreeTypeFont] = {}
-
-
-def _font(weight: str = "Regular", size: int = 16) -> ImageFont.FreeTypeFont:
-    """Load an Inter font at the given size, with caching."""
-    key = (weight, size)
-    if key not in _font_cache:
-        path = FONTS_DIR / f"Inter-{weight}.ttf"
-        _font_cache[key] = ImageFont.truetype(str(path), size)
-    return _font_cache[key]
 
 
 # ── Data model ──
@@ -87,21 +85,6 @@ class Task:
 
 # ── CalDAV client ──
 
-# XML namespaces used in CalDAV requests and responses.
-NS_DAV = "DAV:"
-NS_CALDAV = "urn:ietf:params:xml:ns:caldav"
-
-# PROPFIND body to discover calendars that support VTODO.
-_PROPFIND_XML = """\
-<?xml version="1.0" encoding="utf-8"?>
-<D:propfind xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
-  <D:prop>
-    <D:resourcetype/>
-    <D:displayname/>
-    <C:supported-calendar-component-set/>
-  </D:prop>
-</D:propfind>"""
-
 # CalDAV REPORT body to fetch all VTODOs. We filter for VTODO components
 # only and exclude completed tasks via the COMPLETED property not being
 # defined. We intentionally avoid filtering on STATUS server-side because
@@ -126,80 +109,6 @@ _CALENDAR_QUERY_XML = """\
 </C:calendar-query>"""
 
 
-def _discover_task_lists(
-    client: httpx.Client,
-    base_url: str,
-    username: str,
-    filter_names: list[str],
-) -> list[tuple[str, str]]:
-    """Discover calendar collections that support VTODO components.
-
-    Returns a list of ``(display_name, collection_url)`` tuples. When
-    ``filter_names`` is non-empty, only calendars whose display name
-    matches one of the entries are included.
-    """
-    calendar_home = f"{base_url}/remote.php/dav/calendars/{username}/"
-    log.info("Discovering task lists at %s", calendar_home)
-
-    response = client.request(
-        "PROPFIND",
-        calendar_home,
-        content=_PROPFIND_XML,
-        headers={
-            "Content-Type": "application/xml; charset=utf-8",
-            "Depth": "1",
-        },
-    )
-    response.raise_for_status()
-
-    root = ET.fromstring(response.text)
-    task_lists: list[tuple[str, str]] = []
-
-    for resp_elem in root.findall(f"{{{NS_DAV}}}response"):
-        href = resp_elem.findtext(f"{{{NS_DAV}}}href", "")
-        prop = resp_elem.find(f"{{{NS_DAV}}}propstat/{{{NS_DAV}}}prop")
-        if prop is None:
-            continue
-
-        # Must be a calendar collection (has both <D:collection/> and
-        # <C:calendar/> in resourcetype).
-        restype = prop.find(f"{{{NS_DAV}}}resourcetype")
-        if restype is None:
-            continue
-        is_calendar = (
-            restype.find(f"{{{NS_DAV}}}collection") is not None
-            and restype.find(f"{{{NS_CALDAV}}}calendar") is not None
-        )
-        if not is_calendar:
-            continue
-
-        # Must support VTODO components. Calendars that only support VEVENT
-        # (regular calendars) are skipped.
-        comp_set = prop.find(f"{{{NS_CALDAV}}}supported-calendar-component-set")
-        supports_vtodo = False
-        if comp_set is not None:
-            for comp in comp_set.findall(f"{{{NS_CALDAV}}}comp"):
-                if comp.get("name") == "VTODO":
-                    supports_vtodo = True
-                    break
-        if not supports_vtodo:
-            continue
-
-        display_name = prop.findtext(f"{{{NS_DAV}}}displayname", "")
-
-        # Optionally filter by display name.
-        if filter_names and display_name not in filter_names:
-            log.debug("Skipping task list '%s' (not in filter)", display_name)
-            continue
-
-        # Build the full URL from the href (typically a relative path).
-        collection_url = f"{base_url}{href}" if href.startswith("/") else href
-        task_lists.append((display_name, collection_url))
-        log.info("  Found task list: '%s' → %s", display_name, collection_url)
-
-    return task_lists
-
-
 def _fetch_vtodos(
     client: httpx.Client,
     collection_url: str,
@@ -216,22 +125,8 @@ def _fetch_vtodos(
     )
     response.raise_for_status()
 
-    root = ET.fromstring(response.text)
     tasks: list[Task] = []
-
-    for resp_elem in root.findall(f"{{{NS_DAV}}}response"):
-        cal_data_elem = resp_elem.find(
-            f"{{{NS_DAV}}}propstat/{{{NS_DAV}}}prop/{{{NS_CALDAV}}}calendar-data"
-        )
-        if cal_data_elem is None or not cal_data_elem.text:
-            continue
-
-        try:
-            cal = icalendar.Calendar.from_ical(cal_data_elem.text)
-        except Exception:
-            log.warning("Failed to parse iCalendar data, skipping")
-            continue
-
+    for cal in parse_calendar_responses(response.text):
         for component in cal.walk("VTODO"):
             task = _parse_vtodo(component)
             if task is not None:
@@ -342,8 +237,9 @@ def fetch_tasks(settings: Settings) -> list[Task]:
         headers={"User-Agent": "display-thingy/0.1 (e-paper task display)"},
         follow_redirects=True,
     ) as client:
-        task_lists = _discover_task_lists(
-            client, base_url, settings.caldav_username, settings.caldav_task_lists
+        task_lists = discover_collections(
+            client, base_url, settings.caldav_username,
+            settings.caldav_task_lists, "VTODO",
         )
 
         if not task_lists:
@@ -365,11 +261,8 @@ def fetch_tasks(settings: Settings) -> list[Task]:
 
 # ── Renderer ──
 
-BLACK = 0
-WHITE = 1
-
-# Layout constants
-HEADER_HEIGHT = 35
+# Layout constants (view-specific; standard constants like BLACK, WHITE,
+# HEADER_HEIGHT come from _render).
 ROW_HEIGHT = 32
 CHECKBOX_SIZE = 14
 INDENT_WIDTH = 30
@@ -458,20 +351,7 @@ def render_tasks(tasks: list[Task], width: int, height: int) -> Image.Image:
     total_count = len(flat_tasks)
 
     # ── Header ──
-    header_font = _font("Bold", 18)
-    count_font = _font("Regular", 16)
-
-    draw.text((LEFT_PADDING, 8), "Tasks", fill=BLACK, font=header_font)
-
-    count_str = f"{total_count} pending"
-    count_bbox = draw.textbbox((0, 0), count_str, font=count_font)
-    count_w = count_bbox[2] - count_bbox[0]
-    draw.text(
-        (width - count_w - RIGHT_PADDING, 10), count_str, fill=BLACK, font=count_font
-    )
-
-    # Header divider
-    draw.line([(0, HEADER_HEIGHT), (width, HEADER_HEIGHT)], fill=BLACK, width=1)
+    draw_header(draw, width, "Tasks", f"{total_count} pending")
 
     # ── Empty state ──
     if total_count == 0:
@@ -487,7 +367,7 @@ def render_tasks(tasks: list[Task], width: int, height: int) -> Image.Image:
             fill=BLACK,
             font=empty_font,
         )
-        draw.rectangle([(0, 0), (width - 1, height - 1)], outline=BLACK, width=2)
+        draw_border(draw, width, height)
         return img
 
     # ── Task rows ──
@@ -526,8 +406,8 @@ def render_tasks(tasks: list[Task], width: int, height: int) -> Image.Image:
         if task.due is not None:
             due_str = _format_due_date(task.due)
             due_bbox = draw.textbbox((0, 0), due_str, font=due_font)
-            due_w = due_bbox[2] - due_bbox[0]
-            due_h = due_bbox[3] - due_bbox[1]
+            due_w = int(due_bbox[2] - due_bbox[0])
+            due_h = int(due_bbox[3] - due_bbox[1])
             draw.text(
                 (width - RIGHT_PADDING - due_w, cy - due_h // 2),
                 due_str,
@@ -537,24 +417,15 @@ def render_tasks(tasks: list[Task], width: int, height: int) -> Image.Image:
 
         # Summary text — bold for high-priority tasks, truncated with
         # ellipsis if it would overlap the due date.
-        font = summary_bold_font if task.priority == PRIORITY_HIGH else summary_font
-        max_summary_w = width - text_x - RIGHT_PADDING - (due_w + 15 if due_w else 0)
+        task_font = summary_bold_font if task.priority == PRIORITY_HIGH else summary_font
+        due_gap = due_w + 15 if due_w else 0
+        max_summary_w = width - text_x - RIGHT_PADDING - due_gap
 
-        summary = task.summary
-        summary_bbox = draw.textbbox((0, 0), summary, font=font)
-        summary_w = summary_bbox[2] - summary_bbox[0]
+        summary = truncate_text(draw, task.summary, task_font, max_summary_w)
+        summary_bbox = draw.textbbox((0, 0), summary, font=task_font)
         summary_h = summary_bbox[3] - summary_bbox[1]
 
-        if summary_w > max_summary_w:
-            while len(summary) > 1:
-                summary = summary[:-1]
-                truncated = summary.rstrip() + "..."
-                tw = draw.textbbox((0, 0), truncated, font=font)[2]
-                if tw <= max_summary_w:
-                    summary = truncated
-                    break
-
-        draw.text((text_x, cy - summary_h // 2), summary, fill=BLACK, font=font)
+        draw.text((text_x, cy - summary_h // 2), summary, fill=BLACK, font=task_font)
 
         # Subtle row divider.
         if i < len(visible_tasks) - 1:
@@ -566,23 +437,10 @@ def render_tasks(tasks: list[Task], width: int, height: int) -> Image.Image:
             )
 
     # ── Overflow indicator ──
-    overflow_y = height - OVERFLOW_HEIGHT
-    draw.line([(0, overflow_y), (width, overflow_y)], fill=BLACK, width=1)
-
-    if overflow_count > 0:
-        overflow_font = _font("Medium", 14)
-        overflow_str = f"+ {overflow_count} more task{'s' if overflow_count != 1 else ''}"
-        ov_bbox = draw.textbbox((0, 0), overflow_str, font=overflow_font)
-        ov_w = ov_bbox[2] - ov_bbox[0]
-        draw.text(
-            (width - ov_w - RIGHT_PADDING, overflow_y + 8),
-            overflow_str,
-            fill=BLACK,
-            font=overflow_font,
-        )
+    draw_overflow_bar(draw, width, height, overflow_count, "task", bar_height=OVERFLOW_HEIGHT)
 
     # ── Outer border ──
-    draw.rectangle([(0, 0), (width - 1, height - 1)], outline=BLACK, width=2)
+    draw_border(draw, width, height)
 
     return img
 
@@ -602,26 +460,10 @@ class TasksView(BaseView):
         try:
             tasks = fetch_tasks(self.settings)
         except ValueError as e:
-            # Configuration error — render an error message rather than
+            # Configuration error -- render an error message rather than
             # crashing the entire view rotation.
             log.error("Tasks view: %s", e)
-            return self._render_error(str(e), width, height)
+            return render_error("Tasks", "Tasks: configuration error", str(e), width, height)
 
         log.info("Got %d top-level tasks", len(tasks))
         return render_tasks(tasks, width, height)
-
-    def _render_error(self, message: str, width: int, height: int) -> Image.Image:
-        """Render a simple error screen when CalDAV is misconfigured."""
-        img = Image.new("1", (width, height), WHITE)
-        draw = ImageDraw.Draw(img)
-        draw.text(
-            (LEFT_PADDING, height // 2 - 20),
-            "Tasks: configuration error",
-            fill=BLACK,
-            font=_font("Bold", 18),
-        )
-        draw.text(
-            (LEFT_PADDING, height // 2 + 10), message, fill=BLACK, font=_font("Regular", 16)
-        )
-        draw.rectangle([(0, 0), (width - 1, height - 1)], outline=BLACK, width=2)
-        return img

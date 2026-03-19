@@ -8,25 +8,14 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 import httpx
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
-from display_thingy.config import FONTS_DIR, Settings
+from display_thingy.config import Settings
 from display_thingy.views import BaseView, registry
+from display_thingy.views._render import BLACK, WHITE, draw_border
+from display_thingy.views._render import font as _font
 
 log = logging.getLogger(__name__)
-
-# --- Fonts ---
-
-_font_cache: dict[tuple[str, int], ImageFont.FreeTypeFont] = {}
-
-
-def _font(weight: str = "Regular", size: int = 16) -> ImageFont.FreeTypeFont:
-    """Load an Inter font at the given size, with caching."""
-    key = (weight, size)
-    if key not in _font_cache:
-        path = FONTS_DIR / f"Inter-{weight}.ttf"
-        _font_cache[key] = ImageFont.truetype(str(path), size)
-    return _font_cache[key]
 
 
 # --- Data models ---
@@ -124,9 +113,6 @@ def fetch_weather(settings: Settings) -> WeatherData:
 # --- Weather icon drawing ---
 # All icons are drawn with PIL primitives into a square canvas.
 # Black = fill, White = background. Mode '1'.
-
-BLACK = 0
-WHITE = 1
 
 
 def _draw_sun(draw: ImageDraw.ImageDraw, cx: float, cy: float, r: float) -> None:
@@ -405,7 +391,7 @@ def render_weather(
             )
 
     # ── Outer border ──
-    draw.rectangle([(0, 0), (width - 1, height - 1)], outline=BLACK, width=2)
+    draw_border(draw, width, height)
 
     return img
 

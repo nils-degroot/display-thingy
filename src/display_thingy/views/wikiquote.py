@@ -17,30 +17,21 @@ from datetime import date
 import httpx
 from PIL import Image, ImageDraw, ImageFont
 
-from display_thingy.config import FONTS_DIR
 from display_thingy.views import BaseView, registry
+from display_thingy.views._render import (
+    BLACK,
+    HEADER_HEIGHT,
+    WHITE,
+    draw_border,
+    draw_header,
+    render_error,
+)
+from display_thingy.views._render import (
+    font as _font,
+)
+from display_thingy.views._wiki import strip_basic_wiki_markup
 
 log = logging.getLogger(__name__)
-
-
-# ── Fonts ──
-
-_font_cache: dict[tuple[str, int], ImageFont.FreeTypeFont] = {}
-
-
-def _font(weight: str = "Regular", size: int = 16) -> ImageFont.FreeTypeFont:
-    """Load an Inter font at the given size, with caching."""
-    key = (weight, size)
-    if key not in _font_cache:
-        path = FONTS_DIR / f"Inter-{weight}.ttf"
-        _font_cache[key] = ImageFont.truetype(str(path), size)
-    return _font_cache[key]
-
-
-# ── Constants ──
-
-BLACK = 0
-WHITE = 1
 
 WIKIQUOTE_API = "https://en.wikiquote.org/w/api.php"
 USER_AGENT = "display-thingy/0.1 (e-paper quote display)"
@@ -55,36 +46,6 @@ class Quote:
 
     text: str
     author: str
-
-
-# ── Wiki markup cleanup ──
-
-# Matches [[Target|display text]] or [[word]] wiki links.
-_WIKI_LINK_RE = re.compile(r"\[\[(?:[^|\]]*\|)?([^\]]+)\]\]")
-
-# Matches <!-- HTML comments -->, including multi-line.
-_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
-
-# Matches <br />, <br/>, <br> tags.
-_BR_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
-
-
-def _strip_wiki_markup(raw: str) -> str:
-    """Remove wiki markup from a QOTD template field, returning plain text.
-
-    Handles:
-    - ``[[Target|display]]`` -> ``display``
-    - ``[[word]]``           -> ``word``
-    - ``<!-- comments -->``  -> removed
-    - ``<br />``             -> space
-    - Consecutive whitespace -> single space
-    """
-    text = _COMMENT_RE.sub("", raw)
-    text = _BR_RE.sub(" ", text)
-    text = _WIKI_LINK_RE.sub(r"\1", text)
-    # Collapse whitespace and strip.
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
 
 
 # ── API client ──
@@ -110,13 +71,13 @@ def _parse_template(wikitext: str) -> Quote:
     )
     if not quote_match:
         raise ValueError("Could not find 'quote' parameter in QOTD template")
-    quote_text = _strip_wiki_markup(quote_match.group(1))
+    quote_text = strip_basic_wiki_markup(quote_match.group(1))
 
     # Extract the author parameter (single line).
     author_match = re.search(r"\|\s*author\s*=\s*(.+)", wikitext)
     if not author_match:
         raise ValueError("Could not find 'author' parameter in QOTD template")
-    author = _strip_wiki_markup(author_match.group(1).strip())
+    author = strip_basic_wiki_markup(author_match.group(1).strip())
 
     return Quote(text=quote_text, author=author)
 
@@ -158,7 +119,6 @@ def fetch_quote() -> Quote:
 # ── Renderer ──
 
 # Layout constants
-HEADER_HEIGHT = 35
 LEFT_PADDING = 50
 RIGHT_PADDING = 50
 TOP_PADDING = 20
@@ -213,17 +173,9 @@ def render_quote(quote: Quote, width: int, height: int) -> Image.Image:
 
     # ── Header ──
 
-    header_font = _font("Bold", 18)
-    date_font = _font("Regular", 16)
-
-    draw.text((12, 8), "Quote of the Day", font=header_font, fill=BLACK)
-
     today = date.today()
     date_str = today.strftime("%B %-d, %Y")
-    date_w = draw.textbbox((0, 0), date_str, font=date_font)[2]
-    draw.text((width - 12 - date_w, 10), date_str, font=date_font, fill=BLACK)
-
-    draw.line([(0, HEADER_HEIGHT), (width, HEADER_HEIGHT)], fill=BLACK, width=1)
+    draw_header(draw, width, "Quote of the Day", date_str, left_pad=12, right_pad=12)
 
     # ── Usable area ──
     #
@@ -333,37 +285,9 @@ def render_quote(quote: Quote, width: int, height: int) -> Image.Image:
 
     # ── Border ──
 
-    draw.rectangle([(0, 0), (width - 1, height - 1)], outline=BLACK, width=2)
+    draw_border(draw, width, height)
 
     return img
-
-
-def _render_error(message: str, width: int, height: int) -> Image.Image:
-    """Render a human-readable error image when fetching fails."""
-    img = Image.new("1", (width, height), WHITE)
-    draw = ImageDraw.Draw(img)
-
-    title_font = _font("Bold", 18)
-    body_font = _font("Regular", 16)
-
-    draw.text((12, 8), "Quote of the Day", font=title_font, fill=BLACK)
-    draw.line([(0, HEADER_HEIGHT), (width, HEADER_HEIGHT)], fill=BLACK, width=1)
-
-    error_title = "Could not load quote"
-    et_bbox = draw.textbbox((0, 0), error_title, font=title_font)
-    et_w = et_bbox[2] - et_bbox[0]
-    center_y = HEADER_HEIGHT + (height - HEADER_HEIGHT) // 2 - 30
-    draw.text(((width - et_w) // 2, center_y), error_title, font=title_font, fill=BLACK)
-
-    msg_bbox = draw.textbbox((0, 0), message, font=body_font)
-    msg_w = msg_bbox[2] - msg_bbox[0]
-    draw.text(((width - msg_w) // 2, center_y + 30), message, font=body_font, fill=BLACK)
-
-    draw.rectangle([(0, 0), (width - 1, height - 1)], outline=BLACK, width=2)
-    return img
-
-
-# ── View class ──
 
 
 @registry.register
@@ -378,9 +302,14 @@ class WikiquoteView(BaseView):
             quote = fetch_quote()
         except Exception as exc:
             log.error("Wikiquote view: %s", exc)
-            return _render_error(str(exc), width, height)
+            return render_error(
+                "Quote of the Day", "Could not load quote", str(exc), width, height,
+            )
 
         if not quote.text:
-            return _render_error("Empty quote returned from API", width, height)
+            return render_error(
+                "Quote of the Day", "Could not load quote",
+                "Empty quote returned from API", width, height,
+            )
 
         return render_quote(quote, width, height)

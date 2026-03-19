@@ -23,30 +23,22 @@ from datetime import date
 import httpx
 from PIL import Image, ImageDraw, ImageFont
 
-from display_thingy.config import FONTS_DIR
 from display_thingy.views import BaseView, registry
+from display_thingy.views._render import (
+    BLACK,
+    HEADER_HEIGHT,
+    WHITE,
+    draw_border,
+    draw_header,
+    render_error,
+    truncate_text,
+)
+from display_thingy.views._render import (
+    font as _font,
+)
+from display_thingy.views._wiki import strip_basic_wiki_markup
 
 log = logging.getLogger(__name__)
-
-
-# ── Fonts ──
-
-_font_cache: dict[tuple[str, int], ImageFont.FreeTypeFont] = {}
-
-
-def _font(weight: str = "Regular", size: int = 16) -> ImageFont.FreeTypeFont:
-    """Load an Inter font at the given size, with caching."""
-    key = (weight, size)
-    if key not in _font_cache:
-        path = FONTS_DIR / f"Inter-{weight}.ttf"
-        _font_cache[key] = ImageFont.truetype(str(path), size)
-    return _font_cache[key]
-
-
-# ── Constants ──
-
-BLACK = 0
-WHITE = 1
 
 WIKTIONARY_API = "https://en.wiktionary.org/w/api.php"
 USER_AGENT = "display-thingy/0.1 (e-paper word display)"
@@ -66,9 +58,9 @@ class WordOfTheDay:
 
 
 # ── Wiki markup cleanup ──
-
-# Matches [[Target|display text]] or [[word]] wiki links.
-_WIKI_LINK_RE = re.compile(r"\[\[(?:[^|\]]*\|)?([^\]]+)\]\]")
+#
+# Wiktionary definitions use richer markup than Wikiquote, so we layer
+# extra cleanup steps on top of the shared basic pipeline.
 
 # Matches {{lb|en|label1|label2|...}} label templates.  The first param
 # is always the language code ("en"), which we discard.  Remaining params
@@ -84,12 +76,6 @@ _ITALIC_RE = re.compile(r"''([^']+)''")
 
 # Matches [...] continuation markers (e.g. "[...]" at end of definitions).
 _CONTINUATION_RE = re.compile(r"\s*\[\.\.\.?\]")
-
-# Matches <!-- HTML comments -->.
-_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
-
-# Matches <br /> and similar tags.
-_BR_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
 
 
 def _format_labels(match: re.Match) -> str:
@@ -109,28 +95,27 @@ def _format_labels(match: re.Match) -> str:
 def _strip_wiki_markup(raw: str) -> str:
     """Remove wiki markup from a WOTD definition line, returning plain text.
 
-    Handles:
+    Extends the shared basic pipeline (comments, ``<br>``, wiki links,
+    whitespace) with Wiktionary-specific steps:
+
     - ``{{lb|en|humorous}}``   -> ``(humorous)``
     - ``{{other templates}}``  -> removed
-    - ``[[Target|display]]``   -> ``display``
-    - ``[[word]]``             -> ``word``
     - ``''italic''``           -> ``italic``
     - ``<<region>>``           -> ``region``
     - ``[...]``                -> removed
-    - ``<!-- comments -->``    -> removed
-    - ``<br />``               -> space
-    - Consecutive whitespace   -> single space
     """
-    text = _COMMENT_RE.sub("", raw)
-    text = _BR_RE.sub(" ", text)
+    # Start with the shared 4-step base pipeline (comments, br, wiki
+    # links, whitespace collapse).
+    text = strip_basic_wiki_markup(raw)
+
+    # Wiktionary-specific extra steps.
     text = _LABEL_TMPL_RE.sub(_format_labels, text)
     text = _GENERIC_TMPL_RE.sub("", text)
-    text = _WIKI_LINK_RE.sub(r"\1", text)
     text = _ITALIC_RE.sub(r"\1", text)
     text = _CONTINUATION_RE.sub("", text)
     # Wiktionary uses <<region>> markers for geographic labels.
     text = re.sub(r"<<([^>]+)>>", r"\1", text)
-    # Collapse whitespace and strip.
+    # Re-collapse whitespace after extra stripping steps.
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
@@ -393,7 +378,6 @@ def fetch_word_of_the_day() -> WordOfTheDay:
 # ── Renderer ──
 
 # Layout constants
-HEADER_HEIGHT = 35
 LEFT_PADDING = 30
 RIGHT_PADDING = 30
 TOP_CONTENT_PADDING = 20
@@ -439,17 +423,9 @@ def render_wotd(wotd: WordOfTheDay, width: int, height: int) -> Image.Image:
 
     # ── Header ──
 
-    header_font = _font("Bold", 18)
-    date_font = _font("Regular", 16)
-
-    draw.text((12, 8), "Word of the Day", font=header_font, fill=BLACK)
-
     today = date.today()
     date_str = today.strftime("%B %-d, %Y")
-    date_w = draw.textbbox((0, 0), date_str, font=date_font)[2]
-    draw.text((width - 12 - date_w, 10), date_str, font=date_font, fill=BLACK)
-
-    draw.line([(0, HEADER_HEIGHT), (width, HEADER_HEIGHT)], fill=BLACK, width=1)
+    draw_header(draw, width, "Word of the Day", date_str, left_pad=12, right_pad=12)
 
     # ── Comment bar at the bottom (if present) ──
     #
@@ -596,16 +572,7 @@ def render_wotd(wotd: WordOfTheDay, width: int, height: int) -> Image.Image:
 
         # Truncate the comment if it doesn't fit on one line.
         max_comment_w = width - LEFT_PADDING - RIGHT_PADDING
-        comment_text = wotd.comment
-        cw = draw.textbbox((0, 0), comment_text, font=comment_font)[2]
-        if cw > max_comment_w:
-            while len(comment_text) > 1:
-                comment_text = comment_text[:-1]
-                truncated = comment_text.rstrip() + "\u2026"
-                tw = draw.textbbox((0, 0), truncated, font=comment_font)[2]
-                if tw <= max_comment_w:
-                    comment_text = truncated
-                    break
+        comment_text = truncate_text(draw, wotd.comment, comment_font, max_comment_w)
 
         draw.text(
             (LEFT_PADDING, comment_y + 8),
@@ -616,33 +583,8 @@ def render_wotd(wotd: WordOfTheDay, width: int, height: int) -> Image.Image:
 
     # ── Border ──
 
-    draw.rectangle([(0, 0), (width - 1, height - 1)], outline=BLACK, width=2)
+    draw_border(draw, width, height)
 
-    return img
-
-
-def _render_error(message: str, width: int, height: int) -> Image.Image:
-    """Render a human-readable error image when fetching fails."""
-    img = Image.new("1", (width, height), WHITE)
-    draw = ImageDraw.Draw(img)
-
-    title_font = _font("Bold", 18)
-    body_font = _font("Regular", 16)
-
-    draw.text((12, 8), "Word of the Day", font=title_font, fill=BLACK)
-    draw.line([(0, HEADER_HEIGHT), (width, HEADER_HEIGHT)], fill=BLACK, width=1)
-
-    error_title = "Could not load word"
-    et_bbox = draw.textbbox((0, 0), error_title, font=title_font)
-    et_w = et_bbox[2] - et_bbox[0]
-    center_y = HEADER_HEIGHT + (height - HEADER_HEIGHT) // 2 - 30
-    draw.text(((width - et_w) // 2, center_y), error_title, font=title_font, fill=BLACK)
-
-    msg_bbox = draw.textbbox((0, 0), message, font=body_font)
-    msg_w = msg_bbox[2] - msg_bbox[0]
-    draw.text(((width - msg_w) // 2, center_y + 30), message, font=body_font, fill=BLACK)
-
-    draw.rectangle([(0, 0), (width - 1, height - 1)], outline=BLACK, width=2)
     return img
 
 
@@ -661,9 +603,14 @@ class WiktionaryView(BaseView):
             wotd = fetch_word_of_the_day()
         except Exception as exc:
             log.error("Wiktionary view: %s", exc)
-            return _render_error(str(exc), width, height)
+            return render_error(
+                "Word of the Day", "Could not load word", str(exc), width, height,
+            )
 
         if not wotd.definitions:
-            return _render_error("No definitions found for today's word", width, height)
+            return render_error(
+                "Word of the Day", "Could not load word",
+                "No definitions found for today's word", width, height,
+            )
 
         return render_wotd(wotd, width, height)

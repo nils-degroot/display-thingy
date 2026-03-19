@@ -13,32 +13,23 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import httpx
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
-from display_thingy.config import FONTS_DIR
 from display_thingy.views import BaseView, registry
+from display_thingy.views._render import (
+    BLACK,
+    HEADER_HEIGHT,
+    WHITE,
+    draw_border,
+    draw_header,
+    render_error,
+    truncate_text,
+)
+from display_thingy.views._render import (
+    font as _font,
+)
 
 log = logging.getLogger(__name__)
-
-
-# ── Fonts ──
-
-_font_cache: dict[tuple[str, int], ImageFont.FreeTypeFont] = {}
-
-
-def _font(weight: str = "Regular", size: int = 16) -> ImageFont.FreeTypeFont:
-    """Load an Inter font at the given size, with caching."""
-    key = (weight, size)
-    if key not in _font_cache:
-        path = FONTS_DIR / f"Inter-{weight}.ttf"
-        _font_cache[key] = ImageFont.truetype(str(path), size)
-    return _font_cache[key]
-
-
-# ── Constants ──
-
-BLACK = 0
-WHITE = 1
 
 HN_API_BASE = "https://hacker-news.firebaseio.com/v0"
 USER_AGENT = "display-thingy/0.1 (e-paper HN reader)"
@@ -167,7 +158,6 @@ def _relative_time(unix_ts: int) -> str:
 # ── Renderer ──
 
 # Layout constants
-HEADER_HEIGHT = 35
 OVERFLOW_BAR_HEIGHT = 30
 LEFT_PADDING = 12
 RIGHT_PADDING = 12
@@ -187,19 +177,12 @@ def render_hackernews(
 
     # ── Header ──
 
-    header_font = _font("Bold", 18)
-    subtitle_font = _font("Regular", 16)
-
-    draw.text((LEFT_PADDING, 8), "Hacker News", font=header_font, fill=BLACK)
-
-    # Right-aligned subtitle showing the current time.
     now_str = datetime.now(tz=timezone.utc).strftime("%H:%M UTC")
     subtitle = f"Top Stories \u00b7 {now_str}"
-    sub_w = draw.textbbox((0, 0), subtitle, font=subtitle_font)[2]
-    draw.text((width - RIGHT_PADDING - sub_w, 10), subtitle, font=subtitle_font, fill=BLACK)
-
-    # Divider line below header
-    draw.line([(0, HEADER_HEIGHT), (width, HEADER_HEIGHT)], fill=BLACK, width=1)
+    draw_header(
+        draw, width, "Hacker News", subtitle,
+        left_pad=LEFT_PADDING, right_pad=RIGHT_PADDING,
+    )
 
     # ── Story rows ──
 
@@ -228,17 +211,7 @@ def render_hackernews(
         # Draw title, truncated with ellipsis if it overflows.
         title_x = LEFT_PADDING + RANK_WIDTH
         max_title_w = width - title_x - RIGHT_PADDING
-        title = story.title
-
-        title_w = draw.textbbox((0, 0), title, font=title_font)[2]
-        if title_w > max_title_w:
-            while len(title) > 1:
-                title = title[:-1]
-                truncated = title.rstrip() + "\u2026"
-                tw = draw.textbbox((0, 0), truncated, font=title_font)[2]
-                if tw <= max_title_w:
-                    title = truncated
-                    break
+        title = truncate_text(draw, story.title, title_font, max_title_w)
 
         draw.text((title_x, y), title, font=title_font, fill=BLACK)
 
@@ -284,39 +257,9 @@ def render_hackernews(
 
     # ── Border ──
 
-    draw.rectangle([(0, 0), (width - 1, height - 1)], outline=BLACK, width=2)
+    draw_border(draw, width, height)
 
     return img
-
-
-def _render_error(message: str, width: int, height: int) -> Image.Image:
-    """Render a human-readable error image when data fetching fails."""
-    img = Image.new("1", (width, height), WHITE)
-    draw = ImageDraw.Draw(img)
-
-    title_font = _font("Bold", 18)
-    body_font = _font("Regular", 16)
-
-    draw.text((LEFT_PADDING, 8), "Hacker News", font=title_font, fill=BLACK)
-    draw.line([(0, HEADER_HEIGHT), (width, HEADER_HEIGHT)], fill=BLACK, width=1)
-
-    # Center the error message vertically in the usable area.
-    error_title = "Could not load stories"
-    et_bbox = draw.textbbox((0, 0), error_title, font=title_font)
-    et_w = et_bbox[2] - et_bbox[0]
-    center_y = HEADER_HEIGHT + (height - HEADER_HEIGHT) // 2 - 30
-    draw.text(((width - et_w) // 2, center_y), error_title, font=title_font, fill=BLACK)
-
-    # Show the specific error below.
-    msg_bbox = draw.textbbox((0, 0), message, font=body_font)
-    msg_w = msg_bbox[2] - msg_bbox[0]
-    draw.text(((width - msg_w) // 2, center_y + 30), message, font=body_font, fill=BLACK)
-
-    draw.rectangle([(0, 0), (width - 1, height - 1)], outline=BLACK, width=2)
-    return img
-
-
-# ── View class ──
 
 
 @registry.register
@@ -331,9 +274,12 @@ class HackerNewsView(BaseView):
             stories = fetch_stories()
         except Exception as exc:
             log.error("Hacker News view: %s", exc)
-            return _render_error(str(exc), width, height)
+            return render_error("Hacker News", "Could not load stories", str(exc), width, height)
 
         if not stories:
-            return _render_error("No stories returned from API", width, height)
+            return render_error(
+                "Hacker News", "Could not load stories",
+                "No stories returned from API", width, height,
+            )
 
         return render_hackernews(stories, width, height)

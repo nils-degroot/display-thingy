@@ -15,7 +15,6 @@ appear correctly in the 7-day window.
 from __future__ import annotations
 
 import logging
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from typing import TYPE_CHECKING
@@ -23,10 +22,23 @@ from typing import TYPE_CHECKING
 import httpx
 import icalendar
 import recurring_ical_events
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
-from display_thingy.config import FONTS_DIR
 from display_thingy.views import BaseView, registry
+from display_thingy.views._caldav import discover_collections, parse_calendar_responses
+from display_thingy.views._render import (
+    BLACK,
+    HEADER_HEIGHT,
+    WHITE,
+    draw_border,
+    draw_header,
+    draw_overflow_bar,
+    render_error,
+    truncate_text,
+)
+from display_thingy.views._render import (
+    font as _font,
+)
 
 if TYPE_CHECKING:
     from display_thingy.config import Settings
@@ -34,30 +46,9 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-# ── Fonts ──
-
-_font_cache: dict[tuple[str, int], ImageFont.FreeTypeFont] = {}
-
-
-def _font(weight: str = "Regular", size: int = 16) -> ImageFont.FreeTypeFont:
-    """Load an Inter font at the given size, with caching."""
-    key = (weight, size)
-    if key not in _font_cache:
-        path = FONTS_DIR / f"Inter-{weight}.ttf"
-        _font_cache[key] = ImageFont.truetype(str(path), size)
-    return _font_cache[key]
-
-
 # ── Constants ──
 
-BLACK = 0
-WHITE = 1
-
 LOOKAHEAD_DAYS = 7
-
-# XML namespaces used in CalDAV requests and responses.
-NS_DAV = "DAV:"
-NS_CALDAV = "urn:ietf:params:xml:ns:caldav"
 
 
 # ── Data model ──
@@ -75,17 +66,6 @@ class Event:
 
 
 # ── CalDAV client ──
-
-# PROPFIND body to discover calendars that support VEVENT.
-_PROPFIND_XML = """\
-<?xml version="1.0" encoding="utf-8"?>
-<D:propfind xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
-  <D:prop>
-    <D:resourcetype/>
-    <D:displayname/>
-    <C:supported-calendar-component-set/>
-  </D:prop>
-</D:propfind>"""
 
 
 def _make_calendar_query_xml(start: date, end: date) -> str:
@@ -121,77 +101,6 @@ def _make_calendar_query_xml(start: date, end: date) -> str:
 </C:calendar-query>"""
 
 
-def _discover_calendars(
-    client: httpx.Client,
-    base_url: str,
-    username: str,
-    filter_names: list[str],
-) -> list[tuple[str, str]]:
-    """Discover calendar collections that support VEVENT components.
-
-    Returns a list of ``(display_name, collection_url)`` tuples.  When
-    ``filter_names`` is non-empty, only calendars whose display name
-    matches one of the entries are included.
-    """
-    calendar_home = f"{base_url}/remote.php/dav/calendars/{username}/"
-    log.info("Discovering calendars at %s", calendar_home)
-
-    response = client.request(
-        "PROPFIND",
-        calendar_home,
-        content=_PROPFIND_XML,
-        headers={
-            "Content-Type": "application/xml; charset=utf-8",
-            "Depth": "1",
-        },
-    )
-    response.raise_for_status()
-
-    root = ET.fromstring(response.text)
-    calendars: list[tuple[str, str]] = []
-
-    for resp_elem in root.findall(f"{{{NS_DAV}}}response"):
-        href = resp_elem.findtext(f"{{{NS_DAV}}}href", "")
-        prop = resp_elem.find(f"{{{NS_DAV}}}propstat/{{{NS_DAV}}}prop")
-        if prop is None:
-            continue
-
-        # Must be a calendar collection.
-        restype = prop.find(f"{{{NS_DAV}}}resourcetype")
-        if restype is None:
-            continue
-        is_calendar = (
-            restype.find(f"{{{NS_DAV}}}collection") is not None
-            and restype.find(f"{{{NS_CALDAV}}}calendar") is not None
-        )
-        if not is_calendar:
-            continue
-
-        # Must support VEVENT components.
-        comp_set = prop.find(f"{{{NS_CALDAV}}}supported-calendar-component-set")
-        supports_vevent = False
-        if comp_set is not None:
-            for comp in comp_set.findall(f"{{{NS_CALDAV}}}comp"):
-                if comp.get("name") == "VEVENT":
-                    supports_vevent = True
-                    break
-        if not supports_vevent:
-            continue
-
-        display_name = prop.findtext(f"{{{NS_DAV}}}displayname", "")
-
-        # Optionally filter by display name.
-        if filter_names and display_name not in filter_names:
-            log.debug("Skipping calendar '%s' (not in filter)", display_name)
-            continue
-
-        collection_url = f"{base_url}{href}" if href.startswith("/") else href
-        calendars.append((display_name, collection_url))
-        log.info("  Found calendar: '%s' → %s", display_name, collection_url)
-
-    return calendars
-
-
 def _fetch_vevents(
     client: httpx.Client,
     collection_url: str,
@@ -216,23 +125,7 @@ def _fetch_vevents(
     )
     response.raise_for_status()
 
-    root = ET.fromstring(response.text)
-    calendars: list[icalendar.Calendar] = []
-
-    for resp_elem in root.findall(f"{{{NS_DAV}}}response"):
-        cal_data_elem = resp_elem.find(
-            f"{{{NS_DAV}}}propstat/{{{NS_DAV}}}prop/{{{NS_CALDAV}}}calendar-data"
-        )
-        if cal_data_elem is None or not cal_data_elem.text:
-            continue
-
-        try:
-            cal = icalendar.Calendar.from_ical(cal_data_elem.text)
-            calendars.append(cal)
-        except Exception:
-            log.warning("Failed to parse iCalendar data, skipping")
-
-    return calendars
+    return parse_calendar_responses(response.text)
 
 
 def _parse_vevent(component: icalendar.cal.Component) -> Event | None:
@@ -328,8 +221,9 @@ def fetch_events(settings: Settings) -> dict[date, list[Event]]:
         headers={"User-Agent": "display-thingy/0.1 (e-paper calendar display)"},
         follow_redirects=True,
     ) as client:
-        calendars = _discover_calendars(
-            client, base_url, settings.caldav_username, settings.caldav_calendars
+        calendars = discover_collections(
+            client, base_url, settings.caldav_username,
+            settings.caldav_calendars, "VEVENT",
         )
 
         if not calendars:
@@ -380,8 +274,8 @@ def fetch_events(settings: Settings) -> dict[date, list[Event]]:
 
 # ── Renderer ──
 
-# Layout constants
-HEADER_HEIGHT = 35
+# Layout constants (view-specific; standard constants like BLACK, WHITE,
+# HEADER_HEIGHT come from _render).
 LEFT_PADDING = 15
 RIGHT_PADDING = 15
 OVERFLOW_HEIGHT = 30
@@ -433,28 +327,18 @@ def render_agenda(
     img = Image.new("1", (width, height), WHITE)
     draw = ImageDraw.Draw(img)
 
+    # ── Header ──
+
     today = date.today()
     end = today + timedelta(days=LOOKAHEAD_DAYS - 1)
 
-    # ── Header ──
-
-    header_font = _font("Bold", 18)
-    range_font = _font("Regular", 16)
-
-    draw.text((LEFT_PADDING, 8), "Agenda", font=header_font, fill=BLACK)
-
-    # Date range label, e.g. "Mar 19 – 25" or "Mar 28 – Apr 3".
+    # Date range label, e.g. "Mar 19 - 25" or "Mar 28 - Apr 3".
     if today.month == end.month:
-        range_str = f"{today.strftime('%b %-d')} – {end.day}"
+        range_str = f"{today.strftime('%b %-d')} \u2013 {end.day}"
     else:
-        range_str = f"{today.strftime('%b %-d')} – {end.strftime('%b %-d')}"
+        range_str = f"{today.strftime('%b %-d')} \u2013 {end.strftime('%b %-d')}"
 
-    range_w = draw.textbbox((0, 0), range_str, font=range_font)[2]
-    draw.text(
-        (width - range_w - RIGHT_PADDING, 10), range_str, font=range_font, fill=BLACK
-    )
-
-    draw.line([(0, HEADER_HEIGHT), (width, HEADER_HEIGHT)], fill=BLACK, width=1)
+    draw_header(draw, width, "Agenda", range_str)
 
     # ── Empty state ──
 
@@ -471,7 +355,7 @@ def render_agenda(
             ((width - msg_w) // 2, HEADER_HEIGHT + (usable_h - msg_h) // 2),
             msg, fill=BLACK, font=empty_font,
         )
-        draw.rectangle([(0, 0), (width - 1, height - 1)], outline=BLACK, width=2)
+        draw_border(draw, width, height)
         return img
 
     # ── Compute layout ──
@@ -578,21 +462,13 @@ def render_agenda(
                     location_suffix = ""
                     location_w = 0
 
-            title_max_w = max_title_w - location_w
+            title_max_w = int(max_title_w - location_w)
             title = event.summary
 
             # Use bold for all-day events to make them stand out.
             title_font = event_bold_font if event.all_day else event_font
 
-            title_w = draw.textbbox((0, 0), title, font=title_font)[2]
-            if title_w > title_max_w:
-                while len(title) > 1:
-                    title = title[:-1]
-                    truncated = title.rstrip() + "..."
-                    tw = draw.textbbox((0, 0), truncated, font=title_font)[2]
-                    if tw <= title_max_w:
-                        title = truncated
-                        break
+            title = truncate_text(draw, title, title_font, title_max_w)
 
             draw.text((text_x, y + 2), title, font=title_font, fill=BLACK)
 
@@ -611,57 +487,12 @@ def render_agenda(
             y += best_row_h
 
     # ── Overflow indicator ──
-
-    overflow_y = height - OVERFLOW_HEIGHT
-    draw.line([(0, overflow_y), (width, overflow_y)], fill=BLACK, width=1)
-
-    if overflow_count > 0:
-        overflow_font = _font("Medium", 14)
-        overflow_str = f"+ {overflow_count} more event{'s' if overflow_count != 1 else ''}"
-        ov_bbox = draw.textbbox((0, 0), overflow_str, font=overflow_font)
-        ov_w = ov_bbox[2] - ov_bbox[0]
-        draw.text(
-            (width - ov_w - RIGHT_PADDING, overflow_y + 8),
-            overflow_str, fill=BLACK, font=overflow_font,
-        )
+    draw_overflow_bar(draw, width, height, overflow_count, "event", bar_height=OVERFLOW_HEIGHT)
 
     # ── Outer border ──
-
-    draw.rectangle([(0, 0), (width - 1, height - 1)], outline=BLACK, width=2)
+    draw_border(draw, width, height)
 
     return img
-
-
-def _render_error(message: str, width: int, height: int) -> Image.Image:
-    """Render a human-readable error image when fetching fails."""
-    img = Image.new("1", (width, height), WHITE)
-    draw = ImageDraw.Draw(img)
-
-    title_font = _font("Bold", 18)
-    body_font = _font("Regular", 16)
-
-    draw.text((LEFT_PADDING, 8), "Agenda", font=title_font, fill=BLACK)
-    draw.line([(0, HEADER_HEIGHT), (width, HEADER_HEIGHT)], fill=BLACK, width=1)
-
-    error_title = "Could not load calendar"
-    et_bbox = draw.textbbox((0, 0), error_title, font=title_font)
-    et_w = et_bbox[2] - et_bbox[0]
-    center_y = HEADER_HEIGHT + (height - HEADER_HEIGHT) // 2 - 30
-    draw.text(
-        ((width - et_w) // 2, center_y), error_title, font=title_font, fill=BLACK
-    )
-
-    msg_bbox = draw.textbbox((0, 0), message, font=body_font)
-    msg_w = msg_bbox[2] - msg_bbox[0]
-    draw.text(
-        ((width - msg_w) // 2, center_y + 30), message, font=body_font, fill=BLACK
-    )
-
-    draw.rectangle([(0, 0), (width - 1, height - 1)], outline=BLACK, width=2)
-    return img
-
-
-# ── View class ──
 
 
 @registry.register
@@ -677,9 +508,13 @@ class CalendarView(BaseView):
             events_by_date = fetch_events(self.settings)
         except ValueError as exc:
             log.error("Calendar view: %s", exc)
-            return _render_error(str(exc), width, height)
+            return render_error(
+                "Agenda", "Could not load calendar", str(exc), width, height,
+            )
         except Exception as exc:
             log.error("Calendar view: %s", exc, exc_info=True)
-            return _render_error(str(exc), width, height)
+            return render_error(
+                "Agenda", "Could not load calendar", str(exc), width, height,
+            )
 
         return render_agenda(events_by_date, width, height)
