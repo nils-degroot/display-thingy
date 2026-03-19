@@ -48,8 +48,11 @@ echo ""
 
 # --- Sync dependencies ---
 
+# The --inexact flag keeps manually-installed packages (like waveshare_epd,
+# which is not on PyPI and is installed via `uv pip install` from a git clone).
+# Without it, `uv sync` would remove anything not in the lockfile.
 echo "Syncing dependencies..."
-uv sync --extra pi --project "${PROJECT_DIR}"
+uv sync --extra pi --inexact --project "${PROJECT_DIR}"
 echo ""
 
 # --- Regenerate env file ---
