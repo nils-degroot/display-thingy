@@ -1,0 +1,18 @@
+[Unit]
+Description=E-Paper Display Manager
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/display-thingy
+EnvironmentFile=/home/pi/display-thingy/.env
+ExecStart=/home/pi/display-thingy/.venv/bin/display-thingy
+Restart=on-failure
+RestartSec=60
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
