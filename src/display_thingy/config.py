@@ -27,10 +27,11 @@ class Settings(BaseSettings):
     Compatible with direnv (.envrc) — all values come from env vars.
 
     Comma-separated fields (``display_views_csv``, ``caldav_task_lists_csv``,
-    ``caldav_calendars_csv``) are kept as plain ``str`` to avoid pydantic-settings
-    trying to JSON-decode values like ``"weather,wikipedia"``.  Use the
-    corresponding properties (``display_views``, ``caldav_task_lists``,
-    ``caldav_calendars``) to get the parsed ``list[str]``.
+    ``caldav_calendars_csv``, ``rss_urls_csv``) are kept as plain ``str`` to
+    avoid pydantic-settings trying to JSON-decode values like
+    ``"weather,wikipedia"``.  Use the corresponding properties
+    (``display_views``, ``caldav_task_lists``, ``caldav_calendars``,
+    ``rss_urls``) to get the parsed ``list[str]``.
     """
 
     # Required
@@ -61,6 +62,12 @@ class Settings(BaseSettings):
         "", validation_alias="CALDAV_CALENDARS"
     )  # comma-separated calendar names; empty = all
 
+    # RSS / Atom feed reader (required only when the "rss" view is enabled).
+    rss_urls_csv: str = Field(
+        "", validation_alias="RSS_URLS"
+    )  # comma-separated feed URLs
+    rss_title: str = Field("RSS", validation_alias="RSS_TITLE")
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
@@ -72,6 +79,7 @@ class Settings(BaseSettings):
     _display_views: list[str] = []
     _caldav_task_lists: list[str] = []
     _caldav_calendars: list[str] = []
+    _rss_urls: list[str] = []
 
     @model_validator(mode="after")
     def _parse_comma_separated_fields(self) -> Settings:
@@ -82,6 +90,9 @@ class Settings(BaseSettings):
         )
         object.__setattr__(
             self, "_caldav_calendars", _split_csv(self.caldav_calendars_csv)
+        )
+        object.__setattr__(
+            self, "_rss_urls", _split_csv(self.rss_urls_csv)
         )
         return self
 
@@ -99,6 +110,11 @@ class Settings(BaseSettings):
     def caldav_calendars(self) -> list[str]:
         """CalDAV calendar names to display, parsed from ``CALDAV_CALENDARS``."""
         return self._caldav_calendars
+
+    @property
+    def rss_urls(self) -> list[str]:
+        """RSS/Atom feed URLs, parsed from ``RSS_URLS``."""
+        return self._rss_urls
 
 
 def load_settings() -> Settings:

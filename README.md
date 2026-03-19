@@ -115,7 +115,7 @@ order with the `DISPLAY_VIEWS` env var (comma-separated):
 
 ```bash
 export DISPLAY_VIEWS="weather"                  # single view (default)
-export DISPLAY_VIEWS="weather,wikipedia,tasks,hackernews,wikiquote,wiktionary,calendar,xkcd"  # rotate through all
+export DISPLAY_VIEWS="weather,wikipedia,tasks,hackernews,rss,wikiquote,wiktionary,calendar,xkcd"  # rotate through all
 ```
 
 Other global display settings:
@@ -189,6 +189,23 @@ Shows the top 10 stories from the Hacker News front page, each with
 its score, comment count, and a relative timestamp. Uses the public
 [HN Firebase API](https://github.com/HackerNews/API). No additional
 configuration is needed -- this view has no required env vars.
+
+### `rss` -- RSS/Atom feed reader
+
+Fetches one or more RSS or Atom feeds, merges all entries into a single
+timeline sorted by publication date (newest first), and shows the top 10
+articles with feed names and relative timestamps. Uses
+[feedparser](https://feedparser.readthedocs.io/) for broad format
+compatibility.
+
+| Variable    | Default  | Description                                     |
+|-------------|----------|-------------------------------------------------|
+| `RSS_URLS`  | *(empty)* | Comma-separated list of feed URLs              |
+| `RSS_TITLE` | `RSS`    | Custom header title (e.g. `"My Feeds"`, `"Blogs"`) |
+
+These env vars are only required when `rss` is included in
+`DISPLAY_VIEWS`. If no URLs are configured, the view renders an error
+message.
 
 ### `wikiquote` -- Wikiquote Quote of the Day
 

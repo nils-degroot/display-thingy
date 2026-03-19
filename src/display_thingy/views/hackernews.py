@@ -8,7 +8,6 @@ No authentication or API key is required.
 from __future__ import annotations
 
 import logging
-import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -22,6 +21,7 @@ from display_thingy.views._render import (
     WHITE,
     draw_border,
     draw_header,
+    relative_time,
     render_error,
     truncate_text,
 )
@@ -123,38 +123,6 @@ def fetch_stories(count: int = MAX_STORIES) -> list[Story]:
     return stories
 
 
-# ── Relative time formatting ──
-
-
-def _relative_time(unix_ts: int) -> str:
-    """Format a unix timestamp as a human-readable relative time string.
-
-    Examples: "2m ago", "3h ago", "1d ago", "2w ago".
-    """
-    now = time.time()
-    delta = int(now - unix_ts)
-
-    if delta < 0:
-        return "just now"
-    if delta < 60:
-        return "just now"
-
-    minutes = delta // 60
-    if minutes < 60:
-        return f"{minutes}m ago"
-
-    hours = minutes // 60
-    if hours < 24:
-        return f"{hours}h ago"
-
-    days = hours // 24
-    if days < 14:
-        return f"{days}d ago"
-
-    weeks = days // 7
-    return f"{weeks}w ago"
-
-
 # ── Renderer ──
 
 # Layout constants
@@ -221,7 +189,7 @@ def render_hackernews(
         meta_parts = [
             f"\u25b2 {story.score}",
             f"{story.descendants} {comments_label}",
-            _relative_time(story.time),
+            relative_time(story.time),
         ]
         meta_text = "  \u00b7  ".join(meta_parts)
         meta_x = LEFT_PADDING + META_INDENT

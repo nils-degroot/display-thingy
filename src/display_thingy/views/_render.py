@@ -12,6 +12,8 @@ auto-discovery but harmlessly ignored since it contains no
 
 from __future__ import annotations
 
+import time
+
 from PIL import Image, ImageDraw, ImageFont
 
 from display_thingy.config import FONTS_DIR
@@ -51,6 +53,33 @@ def font(weight: str = "Regular", size: int = 16) -> ImageFont.FreeTypeFont:
 def draw_border(draw: ImageDraw.ImageDraw, width: int, height: int) -> None:
     """Draw the standard 2px outer border around the entire image."""
     draw.rectangle([(0, 0), (width - 1, height - 1)], outline=BLACK, width=2)
+
+
+def relative_time(unix_ts: int) -> str:
+    """Format a unix timestamp as a human-readable relative time string.
+
+    Examples: ``"2m ago"``, ``"3h ago"``, ``"1d ago"``, ``"2w ago"``.
+    """
+    now = time.time()
+    delta = int(now - unix_ts)
+
+    if delta < 60:
+        return "just now"
+
+    minutes = delta // 60
+    if minutes < 60:
+        return f"{minutes}m ago"
+
+    hours = minutes // 60
+    if hours < 24:
+        return f"{hours}h ago"
+
+    days = hours // 24
+    if days < 14:
+        return f"{days}d ago"
+
+    weeks = days // 7
+    return f"{weeks}w ago"
 
 
 def draw_header(

@@ -9,6 +9,7 @@ dependencies = [
     "icalendar>=6.0",
     "pydantic-settings>=2.0",
     "recurring-ical-events>=3.8.1",
+    "feedparser>=6.0.12",
 ]
 
 [project.optional-dependencies]
