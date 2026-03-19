@@ -1,6 +1,8 @@
 # display-thingy
 
-E-paper display manager for Raspberry Pi with pluggable views. Currently shows weather data from OpenWeatherMap on a Waveshare 7.5" V2 (800x480) display.
+E-paper display manager for Raspberry Pi with pluggable views. Rotates
+through one or more views on each refresh cycle, rendering to a
+Waveshare 7.5" V2 (800x480) 1-bit display.
 
 ## Hardware
 
@@ -65,16 +67,18 @@ cd ~/display-thingy
 cp .envrc.example .envrc
 ```
 
-Edit `.envrc` and fill in your values:
+Edit `.envrc` and fill in your values. At minimum you need an
+OpenWeatherMap API key:
 
 ```bash
 export OPENWEATHERMAP_KEY="your_api_key_here"  # https://openweathermap.org/api
 export LATITUDE="52.3508"
 export LONGITUDE="5.2647"
 export LOCATION_NAME="Almere"
-export UNITS="metric"       # metric / imperial
-export REFRESH_INTERVAL="900"  # seconds (900 = 15 minutes)
 ```
+
+See [Views](#views) below for per-view configuration and how to enable
+view rotation.
 
 ### 8. Test it
 
@@ -102,6 +106,70 @@ Check status and logs:
 sudo systemctl status display-thingy
 journalctl -u display-thingy -f
 ```
+
+## Views
+
+The display rotates through one or more views, advancing to the next
+view on each refresh cycle. Configure which views to show and in what
+order with the `DISPLAY_VIEWS` env var (comma-separated):
+
+```bash
+export DISPLAY_VIEWS="weather"                  # single view (default)
+export DISPLAY_VIEWS="weather,wikipedia,tasks,hackernews"  # rotate through four
+```
+
+Other global display settings:
+
+| Variable           | Default     | Description                          |
+|--------------------|-------------|--------------------------------------|
+| `REFRESH_INTERVAL` | `900`       | Seconds between refreshes (900 = 15 min) |
+| `PREVIEW_MODE`     | `false`     | Save PNG to `preview/` instead of driving e-paper |
+
+### `weather` -- Current weather and 7-day forecast
+
+Shows current conditions (temperature, humidity, wind, pressure,
+precipitation) alongside a 7-day forecast strip. Data comes from the
+[OpenWeatherMap One Call API](https://openweathermap.org/api/one-call-3).
+
+| Variable             | Default   | Description                          |
+|----------------------|-----------|--------------------------------------|
+| `OPENWEATHERMAP_KEY` | *required* | Your OpenWeatherMap API key         |
+| `LATITUDE`           | `52.3508` | Location latitude                    |
+| `LONGITUDE`          | `5.2647`  | Location longitude                   |
+| `LOCATION_NAME`      | `Almere`  | Display name shown in the header     |
+| `UNITS`              | `metric`  | `metric`, `imperial`, or `standard`  |
+| `LANG`               | `en`      | Language code for weather descriptions |
+
+### `wikipedia` -- Wikipedia Picture of the Day
+
+Fetches the Wikimedia Commons featured image for today, dithers it to
+1-bit with Floyd-Steinberg, and renders it with a title bar and caption.
+No additional configuration is needed -- this view has no required env
+vars.
+
+### `tasks` -- Pending tasks from CalDAV
+
+Connects to any CalDAV server (Nextcloud, Radicale, Baikal, etc.) and
+shows incomplete VTODO items sorted by priority then due date. Subtasks
+are shown with single-level indentation beneath their parent.
+
+| Variable           | Default     | Description                          |
+|--------------------|-------------|--------------------------------------|
+| `CALDAV_URL`       | *required*  | Server URL, e.g. `https://cloud.example.com` |
+| `CALDAV_USERNAME`  | *required*  | CalDAV username                      |
+| `CALDAV_PASSWORD`  | *required*  | App password (recommended over main password) |
+| `CALDAV_TASK_LISTS`| *(empty)*   | Comma-separated list names to show; empty = all lists |
+
+These env vars are only required when `tasks` is included in
+`DISPLAY_VIEWS`. If the CalDAV server is unreachable, the view renders
+an error message instead of crashing.
+
+### `hackernews` -- Hacker News top stories
+
+Shows the top 10 stories from the Hacker News front page, each with
+its score, comment count, and a relative timestamp. Uses the public
+[HN Firebase API](https://github.com/HackerNews/API). No additional
+configuration is needed -- this view has no required env vars.
 
 ## Development
 
@@ -143,7 +211,11 @@ class CalendarView(BaseView):
         return img
 ```
 
-3. Set `DISPLAY_VIEW=calendar` in your `.envrc`
+3. Add `calendar` to your `DISPLAY_VIEWS`:
+
+```bash
+export DISPLAY_VIEWS="weather,calendar"
+```
 
 ## Wiring
 
