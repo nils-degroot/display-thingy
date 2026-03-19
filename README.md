@@ -87,38 +87,14 @@ The display should update with current weather. Press `Ctrl+C` to stop.
 
 ### 9. Install as a system service
 
-For the systemd service, create an environment file from your `.envrc`:
-
 ```bash
-# Convert .envrc exports to a systemd-compatible env file
-grep '^export ' .envrc | sed 's/^export //' > ~/.display-thingy.env
+./deploy/install.sh
 ```
 
-Install and start the service:
-
-```bash
-sudo cp deploy/display-thingy.service /etc/systemd/system/
-
-# Edit the service file if your username or paths differ from the defaults
-sudo systemctl edit display-thingy
-```
-
-Override the defaults if needed (the default assumes user `pi` and path `/home/pi/display-thingy`):
-
-```ini
-[Service]
-User=your_username
-WorkingDirectory=/home/your_username/display-thingy
-EnvironmentFile=/home/your_username/.display-thingy.env
-ExecStart=/home/your_username/display-thingy/.venv/bin/display-thingy
-```
-
-Then enable and start:
-
-```bash
-sudo systemctl enable display-thingy
-sudo systemctl start display-thingy
-```
+This script will:
+- Generate a systemd-compatible env file at `~/.display-thingy.env` from your `.envrc`
+- Install a systemd service unit with the correct user and paths
+- Enable and start the service
 
 Check status and logs:
 
