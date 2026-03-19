@@ -29,6 +29,7 @@ src/display_thingy/
     └── system.py        # Local system stats dashboard (CPU, memory, disk, network, uptime)
 
 deploy/
+├── bootstrap.sh         # Single-line install (curl | bash)
 ├── install.sh           # First-time systemd service installation
 └── update.sh            # Pull + sync + restart (for deployed Pi)
 ```

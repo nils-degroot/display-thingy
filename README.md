@@ -10,6 +10,23 @@ Waveshare 7.5" V2 (800x480) 1-bit display.
 - Waveshare 7.5inch E-Paper V2 (800x480)
 - The display connects via the SPI GPIO header (HAT connector or jumper wires)
 
+## Quick Install (Raspberry Pi OS)
+
+This installs dependencies, enables SPI, installs a systemd service, and
+optionally reboots. By default it configures `DISPLAY_VIEWS="system"`
+so the display works without any API keys.
+
+```bash
+curl -sSL https://raw.githubusercontent.com/nils-degroot/display-thingy/main/deploy/bootstrap.sh | bash
+```
+
+After reboot, the service starts automatically. To change views, edit
+`~/display-thingy/.envrc` and re-run the deploy script to apply:
+
+```bash
+~/display-thingy/deploy/update.sh
+```
+
 ## Raspberry Pi Setup
 
 ### 1. Enable SPI
@@ -46,7 +63,7 @@ source ~/.bashrc
 ### 5. Clone and install the project
 
 ```bash
-git clone <your-repo-url> ~/display-thingy
+git clone https://github.com/nils-degroot/display-thingy.git ~/display-thingy
 cd ~/display-thingy
 uv sync --extra pi
 ```
@@ -67,7 +84,8 @@ cd ~/display-thingy
 cp .envrc.example .envrc
 ```
 
-Edit `.envrc` and fill in your values. At minimum you need an
+Edit `.envrc` and fill in your values. No configuration is required for
+the `system` view. If you enable the `weather` view, you need an
 OpenWeatherMap API key:
 
 ```bash
@@ -87,7 +105,7 @@ source .envrc
 uv run display-thingy
 ```
 
-The display should update with current weather. Press `Ctrl+C` to stop.
+The display should update with system stats (by default). Press `Ctrl+C` to stop.
 
 ### 9. Install as a system service
 
@@ -114,7 +132,7 @@ view on each refresh cycle. Configure which views to show and in what
 order with the `DISPLAY_VIEWS` env var (comma-separated):
 
 ```bash
-export DISPLAY_VIEWS="weather"                  # single view (default)
+export DISPLAY_VIEWS="system"                   # single view (default)
 export DISPLAY_VIEWS="weather,wikipedia,tasks,hackernews,github,rss,wikiquote,wiktionary,calendar,xkcd,system"  # rotate through all
 ```
 

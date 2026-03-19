@@ -34,15 +34,15 @@ class Settings(BaseSettings):
     ``rss_urls``) to get the parsed ``list[str]``.
     """
 
-    # Required
-    openweathermap_key: str
+    # Weather API key (required only when the "weather" view is enabled).
+    openweathermap_key: str = ""
     latitude: float = 52.3508
     longitude: float = 5.2647
     location_name: str = "Almere"
 
     # Display — comma-separated list of view names to rotate through.
     # Each view is shown for one refresh interval before advancing to the next.
-    display_views_csv: str = Field("weather", validation_alias="DISPLAY_VIEWS")
+    display_views_csv: str = Field("system", validation_alias="DISPLAY_VIEWS")
     refresh_interval: int = 900  # seconds
     preview_mode: bool = False
 
@@ -52,9 +52,9 @@ class Settings(BaseSettings):
 
     # CalDAV (required only when the "tasks" view is enabled).
     # Works with any CalDAV server (Nextcloud, Radicale, Baikal, etc.).
-    caldav_url: str = ""          # e.g. "https://cloud.example.com"
+    caldav_url: str = ""  # e.g. "https://cloud.example.com"
     caldav_username: str = ""
-    caldav_password: str = ""     # app password recommended
+    caldav_password: str = ""  # app password recommended
     caldav_task_lists_csv: str = Field(
         "", validation_alias="CALDAV_TASK_LISTS"
     )  # comma-separated list names; empty = all
@@ -63,9 +63,7 @@ class Settings(BaseSettings):
     )  # comma-separated calendar names; empty = all
 
     # RSS / Atom feed reader (required only when the "rss" view is enabled).
-    rss_urls_csv: str = Field(
-        "", validation_alias="RSS_URLS"
-    )  # comma-separated feed URLs
+    rss_urls_csv: str = Field("", validation_alias="RSS_URLS")  # comma-separated feed URLs
     rss_title: str = Field("RSS", validation_alias="RSS_TITLE")
 
     # GitHub activity (required only when the "github" view is enabled).
@@ -89,15 +87,9 @@ class Settings(BaseSettings):
     def _parse_comma_separated_fields(self) -> Settings:
         """Pre-parse CSV fields so the properties return cached lists."""
         object.__setattr__(self, "_display_views", _split_csv(self.display_views_csv))
-        object.__setattr__(
-            self, "_caldav_task_lists", _split_csv(self.caldav_task_lists_csv)
-        )
-        object.__setattr__(
-            self, "_caldav_calendars", _split_csv(self.caldav_calendars_csv)
-        )
-        object.__setattr__(
-            self, "_rss_urls", _split_csv(self.rss_urls_csv)
-        )
+        object.__setattr__(self, "_caldav_task_lists", _split_csv(self.caldav_task_lists_csv))
+        object.__setattr__(self, "_caldav_calendars", _split_csv(self.caldav_calendars_csv))
+        object.__setattr__(self, "_rss_urls", _split_csv(self.rss_urls_csv))
         return self
 
     @property
