@@ -14,6 +14,7 @@ from display_thingy.views import BaseView, registry
 from display_thingy.views._render import (
     BLACK,
     HEADER_HEIGHT,
+    USER_AGENT,
     WHITE,
     draw_border,
     draw_header,
@@ -27,8 +28,6 @@ from display_thingy.views._render import (
 )
 
 log = logging.getLogger(__name__)
-
-USER_AGENT = "display-thingy/0.1 (e-paper GitHub activity feed)"
 
 # How many events to display.  Each event occupies ~42px (summary line
 # + metadata line), giving us room for about 10 in the usable area.
@@ -46,9 +45,9 @@ FETCH_COUNT = 30
 class GitHubEvent:
     """A single GitHub activity event, summarised for display."""
 
-    summary: str       # e.g. "Pushed 3 commits to owner/repo"
-    detail: str        # e.g. branch name, PR title (may be empty)
-    created_at: int    # unix timestamp
+    summary: str  # e.g. "Pushed 3 commits to owner/repo"
+    detail: str  # e.g. branch name, PR title (may be empty)
+    created_at: int  # unix timestamp
 
 
 # ── Event summarisation ──
@@ -234,8 +233,12 @@ def render_github(
     # ── Header ──
 
     draw_header(
-        draw, width, "GitHub", f"@{username}",
-        left_pad=LEFT_PADDING, right_pad=RIGHT_PADDING,
+        draw,
+        width,
+        "GitHub",
+        f"@{username}",
+        left_pad=LEFT_PADDING,
+        right_pad=RIGHT_PADDING,
     )
 
     # ── Event rows ──

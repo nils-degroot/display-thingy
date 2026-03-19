@@ -21,6 +21,7 @@ from display_thingy.views import BaseView, registry
 from display_thingy.views._render import (
     BLACK,
     HEADER_HEIGHT,
+    USER_AGENT,
     WHITE,
     draw_border,
     draw_header,
@@ -34,7 +35,6 @@ from display_thingy.views._wiki import strip_basic_wiki_markup
 log = logging.getLogger(__name__)
 
 WIKIQUOTE_API = "https://en.wikiquote.org/w/api.php"
-USER_AGENT = "display-thingy/0.1 (e-paper quote display)"
 
 
 # ── Data model ──
@@ -66,9 +66,7 @@ def _parse_template(wikitext: str) -> Quote:
     """
     # Extract the quote parameter.  The value may span multiple lines and
     # contains wiki markup that we need to strip.
-    quote_match = re.search(
-        r"\|\s*quote\s*=\s*(.*?)(?=\n\s*\||\n\s*\}\})", wikitext, re.DOTALL
-    )
+    quote_match = re.search(r"\|\s*quote\s*=\s*(.*?)(?=\n\s*\||\n\s*\}\})", wikitext, re.DOTALL)
     if not quote_match:
         raise ValueError("Could not find 'quote' parameter in QOTD template")
     quote_text = strip_basic_wiki_markup(quote_match.group(1))
@@ -90,9 +88,7 @@ def fetch_quote() -> Quote:
     """
     today = date.today()
     # Page title format: "Wikiquote:Quote_of_the_day/March_19,_2026"
-    page_title = (
-        f"Wikiquote:Quote of the day/{today.strftime('%B')} {today.day}, {today.year}"
-    )
+    page_title = f"Wikiquote:Quote of the day/{today.strftime('%B')} {today.day}, {today.year}"
 
     resp = httpx.get(
         WIKIQUOTE_API,
@@ -303,13 +299,20 @@ class WikiquoteView(BaseView):
         except Exception as exc:
             log.error("Wikiquote view: %s", exc)
             return render_error(
-                "Quote of the Day", "Could not load quote", str(exc), width, height,
+                "Quote of the Day",
+                "Could not load quote",
+                str(exc),
+                width,
+                height,
             )
 
         if not quote.text:
             return render_error(
-                "Quote of the Day", "Could not load quote",
-                "Empty quote returned from API", width, height,
+                "Quote of the Day",
+                "Could not load quote",
+                "Empty quote returned from API",
+                width,
+                height,
             )
 
         return render_quote(quote, width, height)

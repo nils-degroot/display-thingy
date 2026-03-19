@@ -18,6 +18,7 @@ from display_thingy.views import BaseView, registry
 from display_thingy.views._render import (
     BLACK,
     HEADER_HEIGHT,
+    USER_AGENT,
     WHITE,
     draw_border,
     draw_header,
@@ -32,7 +33,6 @@ from display_thingy.views._render import (
 log = logging.getLogger(__name__)
 
 HN_API_BASE = "https://hacker-news.firebaseio.com/v0"
-USER_AGENT = "display-thingy/0.1 (e-paper HN reader)"
 
 # How many stories to fetch and display.  The top-stories endpoint returns
 # up to 500 IDs, but we only need enough to fill the screen.  Each story
@@ -148,8 +148,12 @@ def render_hackernews(
     now_str = datetime.now(tz=timezone.utc).strftime("%H:%M UTC")
     subtitle = f"Top Stories \u00b7 {now_str}"
     draw_header(
-        draw, width, "Hacker News", subtitle,
-        left_pad=LEFT_PADDING, right_pad=RIGHT_PADDING,
+        draw,
+        width,
+        "Hacker News",
+        subtitle,
+        left_pad=LEFT_PADDING,
+        right_pad=RIGHT_PADDING,
     )
 
     # ── Story rows ──
@@ -246,8 +250,11 @@ class HackerNewsView(BaseView):
 
         if not stories:
             return render_error(
-                "Hacker News", "Could not load stories",
-                "No stories returned from API", width, height,
+                "Hacker News",
+                "Could not load stories",
+                "No stories returned from API",
+                width,
+                height,
             )
 
         return render_hackernews(stories, width, height)

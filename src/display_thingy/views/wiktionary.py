@@ -27,6 +27,7 @@ from display_thingy.views import BaseView, registry
 from display_thingy.views._render import (
     BLACK,
     HEADER_HEIGHT,
+    USER_AGENT,
     WHITE,
     draw_border,
     draw_header,
@@ -41,7 +42,6 @@ from display_thingy.views._wiki import strip_basic_wiki_markup
 log = logging.getLogger(__name__)
 
 WIKTIONARY_API = "https://en.wiktionary.org/w/api.php"
-USER_AGENT = "display-thingy/0.1 (e-paper word display)"
 
 
 # ── Data model ──
@@ -232,7 +232,7 @@ def _parse_wotd_template(wikitext: str) -> WordOfTheDay:
     # Stop at a secondary word block ('''word''' ''pos'').
     secondary_match = re.search(r"\n\s*'''", def_block)
     if secondary_match:
-        def_block = def_block[:secondary_match.start()]
+        def_block = def_block[: secondary_match.start()]
 
     # Strip any leading "|" left over after named-param removal (e.g.
     # when tl= params appeared at the very start of the definition
@@ -309,7 +309,7 @@ def _split_first_param(text: str) -> tuple[str, str]:
     """
     pos = _find_unbracketed_pipe(text, 0)
     if pos < len(text):
-        return text[:pos], text[pos + 1:]
+        return text[:pos], text[pos + 1 :]
     return text, ""
 
 
@@ -323,7 +323,7 @@ def _find_unbracketed_pipe(text: str, start: int = 0) -> int:
     depth = 0
     i = start
     while i < len(text):
-        two = text[i:i + 2]
+        two = text[i : i + 2]
         if two in ("[[", "{{"):
             depth += 1
             i += 2
@@ -349,9 +349,7 @@ def fetch_word_of_the_day() -> WordOfTheDay:
     """
     today = date.today()
     # Page title format: "Wiktionary:Word_of_the_day/2026/March_19"
-    page_title = (
-        f"Wiktionary:Word of the day/{today.year}/{today.strftime('%B')}_{today.day}"
-    )
+    page_title = f"Wiktionary:Word of the day/{today.year}/{today.strftime('%B')}_{today.day}"
 
     resp = httpx.get(
         WIKTIONARY_API,
@@ -604,13 +602,20 @@ class WiktionaryView(BaseView):
         except Exception as exc:
             log.error("Wiktionary view: %s", exc)
             return render_error(
-                "Word of the Day", "Could not load word", str(exc), width, height,
+                "Word of the Day",
+                "Could not load word",
+                str(exc),
+                width,
+                height,
             )
 
         if not wotd.definitions:
             return render_error(
-                "Word of the Day", "Could not load word",
-                "No definitions found for today's word", width, height,
+                "Word of the Day",
+                "Could not load word",
+                "No definitions found for today's word",
+                width,
+                height,
             )
 
         return render_wotd(wotd, width, height)

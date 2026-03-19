@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw
 
 from display_thingy.config import Settings
 from display_thingy.views import BaseView, registry
-from display_thingy.views._render import BLACK, WHITE, draw_border
+from display_thingy.views._render import BLACK, USER_AGENT, WHITE, draw_border
 from display_thingy.views._render import font as _font
 
 log = logging.getLogger(__name__)
@@ -70,7 +70,9 @@ def fetch_weather(settings: Settings) -> WeatherData:
         "exclude": "minutely,hourly,alerts",
     }
 
-    response = httpx.get(OWM_ONECALL_URL, params=params, timeout=15)
+    response = httpx.get(
+        OWM_ONECALL_URL, params=params, timeout=15, headers={"User-Agent": USER_AGENT}
+    )
     response.raise_for_status()
     data = response.json()
 
@@ -330,10 +332,12 @@ def render_weather(
         pop_pct = weather.daily[0].pop * 100
         details.append(("Chance of rain", f"{pop_pct:.0f}%"))
 
-        details.append((
-            "High / Low",
-            f"{weather.daily[0].temp_max:.0f}\u00b0 / {weather.daily[0].temp_min:.0f}\u00b0",
-        ))
+        details.append(
+            (
+                "High / Low",
+                f"{weather.daily[0].temp_max:.0f}\u00b0 / {weather.daily[0].temp_min:.0f}\u00b0",
+            )
+        )
 
     for i, (label, value) in enumerate(details):
         y = detail_y_start + i * detail_spacing

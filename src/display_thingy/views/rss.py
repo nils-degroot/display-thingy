@@ -16,6 +16,7 @@ from display_thingy.views import BaseView, registry
 from display_thingy.views._render import (
     BLACK,
     HEADER_HEIGHT,
+    USER_AGENT,
     WHITE,
     draw_border,
     draw_header,
@@ -29,8 +30,6 @@ from display_thingy.views._render import (
 )
 
 log = logging.getLogger(__name__)
-
-USER_AGENT = "display-thingy/0.1 (e-paper feed reader)"
 
 # How many items to display.  Each item occupies ~42px (title + metadata),
 # giving us room for about 10 items in the usable area between the header
@@ -115,9 +114,7 @@ def fetch_feeds(urls: list[str]) -> list[FeedItem]:
             feed = feedparser.parse(resp.text)
 
             if feed.bozo and not feed.entries:
-                log.warning(
-                    "Feed %s could not be parsed: %s", url, feed.bozo_exception
-                )
+                log.warning("Feed %s could not be parsed: %s", url, feed.bozo_exception)
                 continue
 
             name = _feed_title(feed)
@@ -170,8 +167,12 @@ def render_feed(
 
     count_text = f"{len(items)} article{'s' if len(items) != 1 else ''}"
     draw_header(
-        draw, width, header_title, count_text,
-        left_pad=LEFT_PADDING, right_pad=RIGHT_PADDING,
+        draw,
+        width,
+        header_title,
+        count_text,
+        left_pad=LEFT_PADDING,
+        right_pad=RIGHT_PADDING,
     )
 
     # ── Item rows ──

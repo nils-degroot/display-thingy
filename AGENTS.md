@@ -16,6 +16,7 @@ src/display_thingy/
     ├── _render.py       # Shared rendering: font, constants, header/border/overflow/truncation/error
     ├── _caldav.py       # Shared CalDAV: collection discovery, response parsing
     ├── _wiki.py         # Shared wiki markup stripping
+    ├── artic.py         # Art Institute of Chicago random artwork
     ├── calendar.py      # CalDAV agenda (7-day upcoming events)
     ├── weather.py       # OpenWeatherMap current + 7-day forecast
     ├── wikipedia_potd.py # Wikimedia Picture of the Day

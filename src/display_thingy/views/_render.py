@@ -18,6 +18,10 @@ from PIL import Image, ImageDraw, ImageFont
 
 from display_thingy.config import FONTS_DIR
 
+# ── HTTP constants ──
+
+USER_AGENT = "display-thingy/0.1 (e-paper display)"
+
 # ── Colour constants ──
 #
 # Mode "1" images: 0 = black, 1 = white.
@@ -103,8 +107,10 @@ def draw_header(
 
     ctx_w = draw.textbbox((0, 0), context_text, font=context_font)[2]
     draw.text(
-        (width - right_pad - ctx_w, 10), context_text,
-        font=context_font, fill=BLACK,
+        (width - right_pad - ctx_w, 10),
+        context_text,
+        font=context_font,
+        fill=BLACK,
     )
 
     draw.line([(0, HEADER_HEIGHT), (width, HEADER_HEIGHT)], fill=BLACK, width=1)
@@ -198,5 +204,7 @@ def draw_overflow_bar(
         ow = draw.textbbox((0, 0), overflow_text, font=overflow_font)[2]
         draw.text(
             (width - right_pad - ow, overflow_y + 8),
-            overflow_text, font=overflow_font, fill=BLACK,
+            overflow_text,
+            font=overflow_font,
+            fill=BLACK,
         )

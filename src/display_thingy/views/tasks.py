@@ -23,6 +23,7 @@ from display_thingy.views._caldav import discover_collections, parse_calendar_re
 from display_thingy.views._render import (
     BLACK,
     HEADER_HEIGHT,
+    USER_AGENT,
     WHITE,
     draw_border,
     draw_header,
@@ -234,12 +235,15 @@ def fetch_tasks(settings: Settings) -> list[Task]:
     with httpx.Client(
         auth=(settings.caldav_username, settings.caldav_password),
         timeout=20,
-        headers={"User-Agent": "display-thingy/0.1 (e-paper task display)"},
+        headers={"User-Agent": USER_AGENT},
         follow_redirects=True,
     ) as client:
         task_lists = discover_collections(
-            client, base_url, settings.caldav_username,
-            settings.caldav_task_lists, "VTODO",
+            client,
+            base_url,
+            settings.caldav_username,
+            settings.caldav_task_lists,
+            "VTODO",
         )
 
         if not task_lists:
@@ -323,9 +327,7 @@ def _draw_checkbox(
         )
 
 
-def _draw_priority_dot(
-    draw: ImageDraw.ImageDraw, x: int, cy: int, priority: str
-) -> None:
+def _draw_priority_dot(draw: ImageDraw.ImageDraw, x: int, cy: int, priority: str) -> None:
     """Draw a small priority indicator next to the task summary."""
     if priority == PRIORITY_HIGH:
         r = 4

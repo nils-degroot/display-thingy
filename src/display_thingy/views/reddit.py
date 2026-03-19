@@ -21,6 +21,7 @@ from display_thingy.views import BaseView, registry
 from display_thingy.views._render import (
     BLACK,
     HEADER_HEIGHT,
+    USER_AGENT,
     WHITE,
     draw_border,
     draw_header,
@@ -33,8 +34,6 @@ from display_thingy.views._render import (
 )
 
 log = logging.getLogger(__name__)
-
-USER_AGENT = "display-thingy/0.1 (e-paper reddit reader; github.com/nils-degroot/display-thingy)"
 
 # How many posts to display.  Each post occupies ~42px (title line +
 # metadata line + gap), giving room for about 10 posts in the 415px

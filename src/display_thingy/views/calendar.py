@@ -29,6 +29,7 @@ from display_thingy.views._caldav import discover_collections, parse_calendar_re
 from display_thingy.views._render import (
     BLACK,
     HEADER_HEIGHT,
+    USER_AGENT,
     WHITE,
     draw_border,
     draw_header,
@@ -171,8 +172,7 @@ def _event_sort_key(event: Event) -> tuple[int, datetime, str]:
     if event.all_day:
         # All-day events sort before timed events on the same day.
         assert isinstance(event.start, date)
-        dt = datetime(event.start.year, event.start.month, event.start.day,
-                       tzinfo=timezone.utc)
+        dt = datetime(event.start.year, event.start.month, event.start.day, tzinfo=timezone.utc)
         return (0, dt, event.summary.lower())
     else:
         start = event.start
@@ -183,8 +183,7 @@ def _event_sort_key(event: Event) -> tuple[int, datetime, str]:
             else:
                 start = start.replace(tzinfo=timezone.utc)
         else:
-            start = datetime(start.year, start.month, start.day,
-                             tzinfo=timezone.utc)
+            start = datetime(start.year, start.month, start.day, tzinfo=timezone.utc)
         return (1, start, event.summary.lower())
 
 
@@ -218,12 +217,15 @@ def fetch_events(settings: Settings) -> dict[date, list[Event]]:
     with httpx.Client(
         auth=(settings.caldav_username, settings.caldav_password),
         timeout=20,
-        headers={"User-Agent": "display-thingy/0.1 (e-paper calendar display)"},
+        headers={"User-Agent": USER_AGENT},
         follow_redirects=True,
     ) as client:
         calendars = discover_collections(
-            client, base_url, settings.caldav_username,
-            settings.caldav_calendars, "VEVENT",
+            client,
+            base_url,
+            settings.caldav_username,
+            settings.caldav_calendars,
+            "VEVENT",
         )
 
         if not calendars:
@@ -312,9 +314,7 @@ def _format_event_time(event: Event) -> str:
     return ""
 
 
-def render_agenda(
-    events_by_date: dict[date, list[Event]], width: int, height: int
-) -> Image.Image:
+def render_agenda(events_by_date: dict[date, list[Event]], width: int, height: int) -> Image.Image:
     """Render the agenda into an 800x480 1-bit image.
 
     Layout (top to bottom):
@@ -353,7 +353,9 @@ def render_agenda(
         usable_h = height - HEADER_HEIGHT - OVERFLOW_HEIGHT
         draw.text(
             ((width - msg_w) // 2, HEADER_HEIGHT + (usable_h - msg_h) // 2),
-            msg, fill=BLACK, font=empty_font,
+            msg,
+            fill=BLACK,
+            font=empty_font,
         )
         draw_border(draw, width, height)
         return img
@@ -423,9 +425,9 @@ def render_agenda(
         # Underline the day header.
         underline_y = y + best_day_h - 4
         draw.line(
-            [(LEFT_PADDING, underline_y),
-             (width - RIGHT_PADDING, underline_y)],
-            fill=BLACK, width=1,
+            [(LEFT_PADDING, underline_y), (width - RIGHT_PADDING, underline_y)],
+            fill=BLACK,
+            width=1,
         )
         y += best_day_h
 
@@ -439,8 +441,10 @@ def render_agenda(
             # Time column.
             time_str = _format_event_time(event)
             draw.text(
-                (LEFT_PADDING + 4, y + 2), time_str,
-                font=time_font, fill=BLACK,
+                (LEFT_PADDING + 4, y + 2),
+                time_str,
+                font=time_font,
+                fill=BLACK,
             )
 
             # Event title.
@@ -453,9 +457,7 @@ def render_agenda(
             location_w = 0
             if event.location:
                 location_suffix = f" · {event.location}"
-                location_w = draw.textbbox(
-                    (0, 0), location_suffix, font=location_font
-                )[2]
+                location_w = draw.textbbox((0, 0), location_suffix, font=location_font)[2]
                 # Only show location if it doesn't take more than 40%
                 # of the available width.
                 if location_w > max_title_w * 0.4:
@@ -480,8 +482,10 @@ def render_agenda(
                 # title baseline.
                 loc_y_offset = best_font_size - (best_font_size - 3)
                 draw.text(
-                    (loc_x, y + 2 + loc_y_offset), location_suffix,
-                    font=location_font, fill=BLACK,
+                    (loc_x, y + 2 + loc_y_offset),
+                    location_suffix,
+                    font=location_font,
+                    fill=BLACK,
                 )
 
             y += best_row_h
@@ -509,12 +513,20 @@ class CalendarView(BaseView):
         except ValueError as exc:
             log.error("Calendar view: %s", exc)
             return render_error(
-                "Agenda", "Could not load calendar", str(exc), width, height,
+                "Agenda",
+                "Could not load calendar",
+                str(exc),
+                width,
+                height,
             )
         except Exception as exc:
             log.error("Calendar view: %s", exc, exc_info=True)
             return render_error(
-                "Agenda", "Could not load calendar", str(exc), width, height,
+                "Agenda",
+                "Could not load calendar",
+                str(exc),
+                width,
+                height,
             )
 
         return render_agenda(events_by_date, width, height)

@@ -14,6 +14,7 @@ from display_thingy.views import BaseView, registry
 from display_thingy.views._render import (
     BLACK,
     HEADER_HEIGHT,
+    USER_AGENT,
     WHITE,
     draw_border,
     draw_header,
@@ -47,8 +48,19 @@ LATEST_COMIC_URL = "https://xkcd.com/info.0.json"
 # as a string like "3", so we map to short names ourselves rather than
 # pulling in calendar/datetime just for formatting.
 _MONTH_ABBR = [
-    "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    "",
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
 ]
 
 
@@ -63,7 +75,7 @@ def fetch_latest_comic() -> Comic:
     resp = httpx.get(
         LATEST_COMIC_URL,
         timeout=15,
-        headers={"User-Agent": "display-thingy/0.1 (e-paper display project)"},
+        headers={"User-Agent": USER_AGENT},
     )
     resp.raise_for_status()
     data = resp.json()
@@ -84,7 +96,7 @@ def fetch_latest_comic() -> Comic:
     img_resp = httpx.get(
         img_url,
         timeout=30,
-        headers={"User-Agent": "display-thingy/0.1 (e-paper display project)"},
+        headers={"User-Agent": USER_AGENT},
         follow_redirects=True,
     )
     img_resp.raise_for_status()

@@ -133,7 +133,7 @@ order with the `DISPLAY_VIEWS` env var (comma-separated):
 
 ```bash
 export DISPLAY_VIEWS="system"                   # single view (default)
-export DISPLAY_VIEWS="weather,wikipedia,tasks,hackernews,reddit,github,rss,wikiquote,wiktionary,calendar,xkcd,system"  # rotate through all
+export DISPLAY_VIEWS="weather,wikipedia,artic,tasks,hackernews,reddit,github,rss,wikiquote,wiktionary,calendar,xkcd,system"  # rotate through all
 ```
 
 Other global display settings:
@@ -168,6 +168,19 @@ No additional configuration is needed -- this view has no required env
 vars.
 
 ![wikipedia view](docs/images/wikipedia.png)
+
+### `artic` -- Art Institute of Chicago artwork
+
+Displays a random public domain artwork from the
+[Art Institute of Chicago](https://www.artic.edu/), dithered to 1-bit,
+with the title, artist, and date in a caption bar. A different artwork
+is selected on each refresh cycle. Uses the public
+[AIC API](https://api.artic.edu/docs/) and their
+[IIIF Image API](https://iiif.io/api/image/2.0/) for image delivery.
+No additional configuration is needed -- this view has no required env
+vars.
+
+![artic view](docs/images/artic.png)
 
 ### `tasks` -- Pending tasks from CalDAV
 

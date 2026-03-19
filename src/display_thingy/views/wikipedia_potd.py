@@ -17,6 +17,7 @@ from display_thingy.views import BaseView, registry
 from display_thingy.views._render import (
     BLACK,
     HEADER_HEIGHT,
+    USER_AGENT,
     WHITE,
     draw_border,
     draw_header,
@@ -69,7 +70,7 @@ def fetch_potd(today: date | None = None) -> PictureOfTheDay:
     response = httpx.get(
         url,
         timeout=15,
-        headers={"User-Agent": "display-thingy/0.1 (e-paper display project)"},
+        headers={"User-Agent": USER_AGENT},
     )
     response.raise_for_status()
     data = response.json()
@@ -98,7 +99,7 @@ def fetch_potd(today: date | None = None) -> PictureOfTheDay:
     img_response = httpx.get(
         thumb_url,
         timeout=30,
-        headers={"User-Agent": "display-thingy/0.1 (e-paper display project)"},
+        headers={"User-Agent": USER_AGENT},
         follow_redirects=True,
     )
     img_response.raise_for_status()
