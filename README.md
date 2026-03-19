@@ -22,17 +22,26 @@ sudo reboot
 
 ```bash
 sudo apt update
-sudo apt install -y python3-dev git libopenjp2-7 libtiff6
+sudo apt install -y python3-dev python3-lgpio git libopenjp2-7 libtiff6
 ```
 
-### 3. Install uv
+### 3. Add your user to the gpio and spi groups
+
+This allows running without `sudo`:
+
+```bash
+sudo usermod -aG gpio,spi $USER
+sudo reboot
+```
+
+### 4. Install uv
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 source ~/.bashrc
 ```
 
-### 4. Clone and install the project
+### 5. Clone and install the project
 
 ```bash
 git clone <your-repo-url> ~/display-thingy
@@ -40,7 +49,7 @@ cd ~/display-thingy
 uv sync --extra pi
 ```
 
-### 5. Install the Waveshare e-Paper driver
+### 6. Install the Waveshare e-Paper driver
 
 ```bash
 cd /tmp
@@ -50,7 +59,7 @@ uv pip install --python ~/display-thingy/.venv/bin/python .
 cd ~/display-thingy
 ```
 
-### 6. Configure
+### 7. Configure
 
 ```bash
 cp .envrc.example .envrc
@@ -67,7 +76,7 @@ export UNITS="metric"       # metric / imperial
 export REFRESH_INTERVAL="900"  # seconds (900 = 15 minutes)
 ```
 
-### 7. Test it
+### 8. Test it
 
 ```bash
 source .envrc
@@ -76,7 +85,7 @@ uv run display-thingy
 
 The display should update with current weather. Press `Ctrl+C` to stop.
 
-### 8. Install as a system service
+### 9. Install as a system service
 
 For the systemd service, create an environment file from your `.envrc`:
 

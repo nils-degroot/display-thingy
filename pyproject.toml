@@ -12,6 +12,7 @@ dependencies = [
 [project.optional-dependencies]
 pi = [
     "gpiozero",
+    "lgpio",
     "spidev",
 ]
 dev = [

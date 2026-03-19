@@ -128,8 +128,8 @@ def create_display(preview_mode: bool = False) -> Display:
     if _is_raspberry_pi():
         try:
             return EpaperDisplay()
-        except RuntimeError:
-            log.warning("E-paper init failed, falling back to preview display")
+        except Exception:
+            log.exception("E-paper init failed, falling back to preview display")
             return PreviewDisplay()
 
     log.info("Not running on Raspberry Pi, using preview display")
