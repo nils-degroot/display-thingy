@@ -68,6 +68,10 @@ class Settings(BaseSettings):
     )  # comma-separated feed URLs
     rss_title: str = Field("RSS", validation_alias="RSS_TITLE")
 
+    # GitHub activity (required only when the "github" view is enabled).
+    github_username: str = ""
+    github_token: str = ""  # personal access token; optional but recommended
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",

@@ -115,7 +115,7 @@ order with the `DISPLAY_VIEWS` env var (comma-separated):
 
 ```bash
 export DISPLAY_VIEWS="weather"                  # single view (default)
-export DISPLAY_VIEWS="weather,wikipedia,tasks,hackernews,rss,wikiquote,wiktionary,calendar,xkcd"  # rotate through all
+export DISPLAY_VIEWS="weather,wikipedia,tasks,hackernews,github,rss,wikiquote,wiktionary,calendar,xkcd"  # rotate through all
 ```
 
 Other global display settings:
@@ -189,6 +189,26 @@ Shows the top 10 stories from the Hacker News front page, each with
 its score, comment count, and a relative timestamp. Uses the public
 [HN Firebase API](https://github.com/HackerNews/API). No additional
 configuration is needed -- this view has no required env vars.
+
+### `github` -- GitHub activity feed
+
+Shows your recent GitHub activity (pushes, pull requests, issues,
+stars, releases, forks, code reviews, and comments) as a ranked feed
+sorted by time. Uses the
+[GitHub Events API](https://docs.github.com/en/rest/activity/events).
+
+| Variable          | Default   | Description                                     |
+|-------------------|----------|-------------------------------------------------|
+| `GITHUB_USERNAME` | *(empty)* | GitHub username to show events for              |
+| `GITHUB_TOKEN`    | *(empty)* | Personal access token (optional but recommended) |
+
+A token is not required for public activity, but providing one enables
+private-repo events and raises the API rate limit from 60 to 5000
+requests per hour. If you use a **classic** personal access token, it
+needs the `repo` scope. If you use a **fine-grained** token, grant
+read-only access to **Contents** on the repositories whose events you
+want to see. These env vars are only required when `github` is included
+in `DISPLAY_VIEWS`.
 
 ### `rss` -- RSS/Atom feed reader
 

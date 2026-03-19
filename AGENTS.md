@@ -21,6 +21,7 @@ src/display_thingy/
     ├── wikipedia_potd.py # Wikimedia Picture of the Day
     ├── tasks.py         # CalDAV VTODO task list
     ├── hackernews.py    # Hacker News top stories
+    ├── github.py        # GitHub personal activity feed
     ├── rss.py           # RSS/Atom feed reader
     ├── wikiquote.py     # Wikiquote Quote of the Day
     ├── wiktionary.py    # Wiktionary Word of the Day
