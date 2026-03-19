@@ -17,7 +17,8 @@ src/display_thingy/
     ├── wikipedia_potd.py # Wikimedia Picture of the Day
     ├── tasks.py         # CalDAV VTODO task list
     ├── hackernews.py    # Hacker News top stories
-    └── wikiquote.py     # Wikiquote Quote of the Day
+    ├── wikiquote.py     # Wikiquote Quote of the Day
+    └── wiktionary.py    # Wiktionary Word of the Day
 
 deploy/
 ├── install.sh           # First-time systemd service installation

@@ -115,7 +115,7 @@ order with the `DISPLAY_VIEWS` env var (comma-separated):
 
 ```bash
 export DISPLAY_VIEWS="weather"                  # single view (default)
-export DISPLAY_VIEWS="weather,wikipedia,tasks,hackernews,wikiquote"  # rotate through five
+export DISPLAY_VIEWS="weather,wikipedia,tasks,hackernews,wikiquote,wiktionary"  # rotate through six
 ```
 
 Other global display settings:
@@ -178,6 +178,17 @@ large decorative curly quotes and right-aligned attribution. Fetches
 from the [MediaWiki parse API](https://www.mediawiki.org/wiki/API:Parsing_wikitext).
 The font size adapts automatically for longer quotes. No additional
 configuration is needed -- this view has no required env vars.
+
+### `wiktionary` -- Wiktionary Word of the Day
+
+Displays the Wiktionary Word of the Day in a dictionary-page layout
+with the word, part of speech, and numbered definitions. Parses the
+WOTD template from the
+[MediaWiki parse API](https://www.mediawiki.org/wiki/API:Parsing_wikitext).
+Multi-level definitions (label-only headings with sub-definitions) are
+promoted and labelled automatically. The font size adapts for words
+with many definitions. No additional configuration is needed -- this
+view has no required env vars.
 
 ## Development
 
