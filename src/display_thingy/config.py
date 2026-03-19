@@ -26,10 +26,11 @@ class Settings(BaseSettings):
 
     Compatible with direnv (.envrc) — all values come from env vars.
 
-    Comma-separated fields (``display_views_csv``, ``caldav_task_lists_csv``)
-    are kept as plain ``str`` to avoid pydantic-settings trying to JSON-decode
-    values like ``"weather,wikipedia"``.  Use the corresponding properties
-    (``display_views``, ``caldav_task_lists``) to get the parsed ``list[str]``.
+    Comma-separated fields (``display_views_csv``, ``caldav_task_lists_csv``,
+    ``caldav_calendars_csv``) are kept as plain ``str`` to avoid pydantic-settings
+    trying to JSON-decode values like ``"weather,wikipedia"``.  Use the
+    corresponding properties (``display_views``, ``caldav_task_lists``,
+    ``caldav_calendars``) to get the parsed ``list[str]``.
     """
 
     # Required
@@ -56,6 +57,9 @@ class Settings(BaseSettings):
     caldav_task_lists_csv: str = Field(
         "", validation_alias="CALDAV_TASK_LISTS"
     )  # comma-separated list names; empty = all
+    caldav_calendars_csv: str = Field(
+        "", validation_alias="CALDAV_CALENDARS"
+    )  # comma-separated calendar names; empty = all
 
     model_config = {
         "env_file": ".env",
@@ -67,6 +71,7 @@ class Settings(BaseSettings):
 
     _display_views: list[str] = []
     _caldav_task_lists: list[str] = []
+    _caldav_calendars: list[str] = []
 
     @model_validator(mode="after")
     def _parse_comma_separated_fields(self) -> Settings:
@@ -74,6 +79,9 @@ class Settings(BaseSettings):
         object.__setattr__(self, "_display_views", _split_csv(self.display_views_csv))
         object.__setattr__(
             self, "_caldav_task_lists", _split_csv(self.caldav_task_lists_csv)
+        )
+        object.__setattr__(
+            self, "_caldav_calendars", _split_csv(self.caldav_calendars_csv)
         )
         return self
 
@@ -86,6 +94,11 @@ class Settings(BaseSettings):
     def caldav_task_lists(self) -> list[str]:
         """CalDAV list names to display, parsed from ``CALDAV_TASK_LISTS``."""
         return self._caldav_task_lists
+
+    @property
+    def caldav_calendars(self) -> list[str]:
+        """CalDAV calendar names to display, parsed from ``CALDAV_CALENDARS``."""
+        return self._caldav_calendars
 
 
 def load_settings() -> Settings:

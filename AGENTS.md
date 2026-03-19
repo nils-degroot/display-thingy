@@ -13,6 +13,7 @@ src/display_thingy/
 ├── assets/fonts/        # Inter font family (Regular, Medium, Bold)
 └── views/
     ├── __init__.py      # BaseView, ViewRegistry, auto-discovery
+    ├── calendar.py      # CalDAV agenda (7-day upcoming events)
     ├── weather.py       # OpenWeatherMap current + 7-day forecast
     ├── wikipedia_potd.py # Wikimedia Picture of the Day
     ├── tasks.py         # CalDAV VTODO task list

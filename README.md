@@ -115,7 +115,7 @@ order with the `DISPLAY_VIEWS` env var (comma-separated):
 
 ```bash
 export DISPLAY_VIEWS="weather"                  # single view (default)
-export DISPLAY_VIEWS="weather,wikipedia,tasks,hackernews,wikiquote,wiktionary"  # rotate through six
+export DISPLAY_VIEWS="weather,wikipedia,tasks,hackernews,wikiquote,wiktionary,calendar"  # rotate through seven
 ```
 
 Other global display settings:
@@ -161,6 +161,25 @@ are shown with single-level indentation beneath their parent.
 | `CALDAV_TASK_LISTS`| *(empty)*   | Comma-separated list names to show; empty = all lists |
 
 These env vars are only required when `tasks` is included in
+`DISPLAY_VIEWS`. If the CalDAV server is unreachable, the view renders
+an error message instead of crashing.
+
+### `calendar` -- Upcoming events from CalDAV
+
+Shows a 7-day agenda grouped by day, with times, event titles, and
+optional locations. Connects to the same CalDAV server as the `tasks`
+view. Recurring events (RRULE/RDATE) are expanded so weekly meetings,
+birthdays, etc. appear correctly. All-day events are shown in bold
+before timed events.
+
+| Variable           | Default     | Description                          |
+|--------------------|-------------|--------------------------------------|
+| `CALDAV_URL`       | *required*  | Server URL (shared with `tasks`)     |
+| `CALDAV_USERNAME`  | *required*  | CalDAV username (shared with `tasks`) |
+| `CALDAV_PASSWORD`  | *required*  | App password (shared with `tasks`)   |
+| `CALDAV_CALENDARS` | *(empty)*   | Comma-separated calendar names to show; empty = all |
+
+These env vars are only required when `calendar` is included in
 `DISPLAY_VIEWS`. If the CalDAV server is unreachable, the view renders
 an error message instead of crashing.
 
