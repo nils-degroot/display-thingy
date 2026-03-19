@@ -115,7 +115,7 @@ order with the `DISPLAY_VIEWS` env var (comma-separated):
 
 ```bash
 export DISPLAY_VIEWS="weather"                  # single view (default)
-export DISPLAY_VIEWS="weather,wikipedia,tasks,hackernews"  # rotate through four
+export DISPLAY_VIEWS="weather,wikipedia,tasks,hackernews,wikiquote"  # rotate through five
 ```
 
 Other global display settings:
@@ -169,6 +169,14 @@ an error message instead of crashing.
 Shows the top 10 stories from the Hacker News front page, each with
 its score, comment count, and a relative timestamp. Uses the public
 [HN Firebase API](https://github.com/HackerNews/API). No additional
+configuration is needed -- this view has no required env vars.
+
+### `wikiquote` -- Wikiquote Quote of the Day
+
+Displays the Wikiquote Quote of the Day in a poster-style layout with
+large decorative curly quotes and right-aligned attribution. Fetches
+from the [MediaWiki parse API](https://www.mediawiki.org/wiki/API:Parsing_wikitext).
+The font size adapts automatically for longer quotes. No additional
 configuration is needed -- this view has no required env vars.
 
 ## Development

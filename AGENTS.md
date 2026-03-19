@@ -16,7 +16,8 @@ src/display_thingy/
     ├── weather.py       # OpenWeatherMap current + 7-day forecast
     ├── wikipedia_potd.py # Wikimedia Picture of the Day
     ├── tasks.py         # CalDAV VTODO task list
-    └── hackernews.py    # Hacker News top stories
+    ├── hackernews.py    # Hacker News top stories
+    └── wikiquote.py     # Wikiquote Quote of the Day
 
 deploy/
 ├── install.sh           # First-time systemd service installation
