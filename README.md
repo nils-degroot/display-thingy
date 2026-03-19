@@ -149,6 +149,8 @@ Shows current conditions (temperature, humidity, wind, pressure,
 precipitation) alongside a 7-day forecast strip. Data comes from the
 [OpenWeatherMap One Call API](https://openweathermap.org/api/one-call-3).
 
+![weather view](docs/images/weather.png)
+
 | Variable             | Default   | Description                          |
 |----------------------|-----------|--------------------------------------|
 | `OPENWEATHERMAP_KEY` | *required* | Your OpenWeatherMap API key         |
@@ -164,6 +166,8 @@ Fetches the Wikimedia Commons featured image for today, dithers it to
 1-bit with Floyd-Steinberg, and renders it with a title bar and caption.
 No additional configuration is needed -- this view has no required env
 vars.
+
+![wikipedia view](docs/images/wikipedia.png)
 
 ### `tasks` -- Pending tasks from CalDAV
 
@@ -208,12 +212,16 @@ its score, comment count, and a relative timestamp. Uses the public
 [HN Firebase API](https://github.com/HackerNews/API). No additional
 configuration is needed -- this view has no required env vars.
 
+![hackernews view](docs/images/hackernews.png)
+
 ### `github` -- GitHub activity feed
 
 Shows your recent GitHub activity (pushes, pull requests, issues,
 stars, releases, forks, code reviews, and comments) as a ranked feed
 sorted by time. Uses the
 [GitHub Events API](https://docs.github.com/en/rest/activity/events).
+
+![github view](docs/images/github.png)
 
 | Variable          | Default   | Description                                     |
 |-------------------|----------|-------------------------------------------------|
@@ -236,6 +244,8 @@ articles with feed names and relative timestamps. Uses
 [feedparser](https://feedparser.readthedocs.io/) for broad format
 compatibility.
 
+![rss view](docs/images/rss.png)
+
 | Variable    | Default  | Description                                     |
 |-------------|----------|-------------------------------------------------|
 | `RSS_URLS`  | *(empty)* | Comma-separated list of feed URLs              |
@@ -253,6 +263,8 @@ from the [MediaWiki parse API](https://www.mediawiki.org/wiki/API:Parsing_wikite
 The font size adapts automatically for longer quotes. No additional
 configuration is needed -- this view has no required env vars.
 
+![wikiquote view](docs/images/wikiquote.png)
+
 ### `wiktionary` -- Wiktionary Word of the Day
 
 Displays the Wiktionary Word of the Day in a dictionary-page layout
@@ -264,6 +276,8 @@ promoted and labelled automatically. The font size adapts for words
 with many definitions. No additional configuration is needed -- this
 view has no required env vars.
 
+![wiktionary view](docs/images/wiktionary.png)
+
 ### `xkcd` -- xkcd latest comic
 
 Displays the latest xkcd comic, scaled to fit the display without
@@ -271,6 +285,8 @@ cropping. The title and alt text (the hover text from the website) are
 shown in a footer bar below the image. Fetches directly from the
 [xkcd JSON API](https://xkcd.com/json.html). No additional
 configuration is needed -- this view has no required env vars.
+
+![xkcd view](docs/images/xkcd.png)
 
 ### `system` -- System stats dashboard
 
@@ -280,6 +296,8 @@ interfaces with IP addresses, and system uptime. Uses
 [psutil](https://github.com/giampaolo/psutil) to collect stats. No
 additional configuration is needed -- this view has no required env
 vars.
+
+![system view](docs/images/system.png)
 
 CPU temperature is read from the SoC thermal sensor (available on
 Raspberry Pi and most Linux systems). On machines without temperature
