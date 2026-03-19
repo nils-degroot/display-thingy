@@ -2,11 +2,14 @@
 
 Usage:
     source .envrc
-    uv run python scripts/generate_screenshots.py
+    uv run python scripts/generate_screenshots.py              # all views
+    uv run python scripts/generate_screenshots.py reddit       # single view
+    uv run python scripts/generate_screenshots.py reddit xkcd  # multiple views
 
-Renders every registered view at 800x480 and saves the result to
-docs/images/{view_name}.png.  Views listed in SKIP are excluded
-(e.g. CalDAV views that require a server connection).
+Renders every registered view (or only the specified ones) at 800x480
+and saves the result to docs/images/{view_name}.png.  When no arguments
+are given, views listed in SKIP are excluded (e.g. CalDAV views that
+require a server connection).
 """
 
 from __future__ import annotations
@@ -31,9 +34,29 @@ def main() -> None:
     discover_views()
 
     available = sorted(registry.available())
-    to_render = [name for name in available if name not in SKIP]
 
-    print(f"Rendering {len(to_render)} views (skipping {SKIP & set(available)})...")
+    # When specific view names are passed on the command line, render only
+    # those (and skip the default SKIP set — the user explicitly asked for
+    # them).  Otherwise render everything except SKIP.
+    requested = sys.argv[1:]
+    if requested:
+        unknown = set(requested) - set(available)
+        if unknown:
+            print(f"Error: unknown view(s): {', '.join(sorted(unknown))}")
+            print(f"Available: {', '.join(available)}")
+            sys.exit(1)
+        to_render = requested
+    else:
+        to_render = [name for name in available if name not in SKIP]
+
+    if requested:
+        print(f"Rendering {len(to_render)} view(s)...")
+    else:
+        skipped = SKIP & set(available)
+        if skipped:
+            print(f"Rendering {len(to_render)} views (skipping {skipped})...")
+        else:
+            print(f"Rendering {len(to_render)} views...")
     print()
 
     failed: list[tuple[str, str]] = []

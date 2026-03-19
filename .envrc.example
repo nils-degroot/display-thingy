@@ -25,3 +25,7 @@ export REFRESH_INTERVAL="900"
 # GitHub activity (required for "github" view)
 # export GITHUB_USERNAME="your_username"
 # export GITHUB_TOKEN=""  # personal access token; optional but recommended
+
+# Reddit (required for "reddit" view)
+# export REDDIT_SUBREDDITS="programming"  # comma-separated subreddit names
+# export REDDIT_SORT="hot"  # hot / top / new / rising

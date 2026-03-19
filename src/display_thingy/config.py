@@ -27,11 +27,12 @@ class Settings(BaseSettings):
     Compatible with direnv (.envrc) — all values come from env vars.
 
     Comma-separated fields (``display_views_csv``, ``caldav_task_lists_csv``,
-    ``caldav_calendars_csv``, ``rss_urls_csv``) are kept as plain ``str`` to
-    avoid pydantic-settings trying to JSON-decode values like
-    ``"weather,wikipedia"``.  Use the corresponding properties
-    (``display_views``, ``caldav_task_lists``, ``caldav_calendars``,
-    ``rss_urls``) to get the parsed ``list[str]``.
+    ``caldav_calendars_csv``, ``rss_urls_csv``, ``reddit_subreddits_csv``)
+    are kept as plain ``str`` to avoid pydantic-settings trying to
+    JSON-decode values like ``"weather,wikipedia"``.  Use the corresponding
+    properties (``display_views``, ``caldav_task_lists``,
+    ``caldav_calendars``, ``rss_urls``, ``reddit_subreddits``) to get the
+    parsed ``list[str]``.
     """
 
     # Weather API key (required only when the "weather" view is enabled).
@@ -70,6 +71,12 @@ class Settings(BaseSettings):
     github_username: str = ""
     github_token: str = ""  # personal access token; optional but recommended
 
+    # Reddit (required only when the "reddit" view is enabled).
+    reddit_subreddits_csv: str = Field(
+        "programming", validation_alias="REDDIT_SUBREDDITS"
+    )  # comma-separated subreddit names
+    reddit_sort: str = "hot"  # hot / top / new / rising
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
@@ -82,6 +89,7 @@ class Settings(BaseSettings):
     _caldav_task_lists: list[str] = []
     _caldav_calendars: list[str] = []
     _rss_urls: list[str] = []
+    _reddit_subreddits: list[str] = []
 
     @model_validator(mode="after")
     def _parse_comma_separated_fields(self) -> Settings:
@@ -90,6 +98,7 @@ class Settings(BaseSettings):
         object.__setattr__(self, "_caldav_task_lists", _split_csv(self.caldav_task_lists_csv))
         object.__setattr__(self, "_caldav_calendars", _split_csv(self.caldav_calendars_csv))
         object.__setattr__(self, "_rss_urls", _split_csv(self.rss_urls_csv))
+        object.__setattr__(self, "_reddit_subreddits", _split_csv(self.reddit_subreddits_csv))
         return self
 
     @property
@@ -111,6 +120,11 @@ class Settings(BaseSettings):
     def rss_urls(self) -> list[str]:
         """RSS/Atom feed URLs, parsed from ``RSS_URLS``."""
         return self._rss_urls
+
+    @property
+    def reddit_subreddits(self) -> list[str]:
+        """Subreddit names to fetch, parsed from ``REDDIT_SUBREDDITS``."""
+        return self._reddit_subreddits
 
 
 def load_settings() -> Settings:

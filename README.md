@@ -133,7 +133,7 @@ order with the `DISPLAY_VIEWS` env var (comma-separated):
 
 ```bash
 export DISPLAY_VIEWS="system"                   # single view (default)
-export DISPLAY_VIEWS="weather,wikipedia,tasks,hackernews,github,rss,wikiquote,wiktionary,calendar,xkcd,system"  # rotate through all
+export DISPLAY_VIEWS="weather,wikipedia,tasks,hackernews,reddit,github,rss,wikiquote,wiktionary,calendar,xkcd,system"  # rotate through all
 ```
 
 Other global display settings:
@@ -213,6 +213,22 @@ its score, comment count, and a relative timestamp. Uses the public
 configuration is needed -- this view has no required env vars.
 
 ![hackernews view](docs/images/hackernews.png)
+
+### `reddit` -- Reddit top posts
+
+Shows the top posts from one or more subreddits, each with its score,
+comment count, subreddit tag (when showing multiple subs), and a
+relative timestamp. Uses Reddit's public JSON API -- no authentication
+is required for public subreddits. Stickied moderator posts are
+automatically filtered out.
+
+| Variable             | Default         | Description                              |
+|----------------------|-----------------|------------------------------------------|
+| `REDDIT_SUBREDDITS`  | `programming`   | Comma-separated subreddit names          |
+| `REDDIT_SORT`        | `hot`           | Sort mode: `hot`, `top`, `new`, `rising` |
+
+These env vars are only required when `reddit` is included in
+`DISPLAY_VIEWS`.
 
 ### `github` -- GitHub activity feed
 

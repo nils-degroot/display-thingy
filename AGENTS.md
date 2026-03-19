@@ -22,6 +22,7 @@ src/display_thingy/
     ├── tasks.py         # CalDAV VTODO task list
     ├── hackernews.py    # Hacker News top stories
     ├── github.py        # GitHub personal activity feed
+    ├── reddit.py        # Reddit top posts from configured subreddits
     ├── rss.py           # RSS/Atom feed reader
     ├── wikiquote.py     # Wikiquote Quote of the Day
     ├── wiktionary.py    # Wiktionary Word of the Day
@@ -157,3 +158,16 @@ includes:
 - Updating the `DISPLAY_VIEWS` example line to list all available views.
 - Documenting new env vars in the relevant view's config table.
 - Updating setup instructions if dependencies or install steps change.
+
+## Screenshots
+
+After adding or modifying a view, generate a fresh screenshot with:
+
+```bash
+source .envrc
+uv run python scripts/generate_screenshots.py
+```
+
+This renders every registered view at 800x480 and saves the result to
+`docs/images/{view_name}.png`. Views that require external services
+(CalDAV) are skipped automatically.
