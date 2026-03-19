@@ -327,7 +327,11 @@ def render_weather(
 
     details = [
         ("Humidity", f"{weather.current.humidity}%"),
-        ("Wind", f"{weather.current.wind_speed:.0f} {units['speed']} {_wind_direction(weather.current.wind_deg)}"),
+        (
+            "Wind",
+            f"{weather.current.wind_speed:.0f} {units['speed']}"
+            f" {_wind_direction(weather.current.wind_deg)}",
+        ),
         ("Pressure", f"{weather.current.pressure} hPa"),
     ]
 

@@ -9,7 +9,7 @@ import time
 
 from display_thingy.config import DISPLAY_HEIGHT, DISPLAY_WIDTH, load_settings
 from display_thingy.display import create_display
-from display_thingy.views import discover_views, registry
+from display_thingy.views import BaseView, discover_views, registry
 
 log = logging.getLogger(__name__)
 
@@ -43,35 +43,58 @@ def main() -> None:
         sys.exit(1)
 
     log.info(
-        "Config loaded: view=%s, location=%s (%.4f, %.4f), interval=%ds",
-        settings.display_view,
+        "Config loaded: views=%s, location=%s (%.4f, %.4f), interval=%ds",
+        ", ".join(settings.display_views),
         settings.location_name,
         settings.latitude,
         settings.longitude,
         settings.refresh_interval,
     )
 
-    # Discover and select view
+    # Discover and resolve the configured view rotation list. Invalid names
+    # are skipped with a warning so that one typo doesn't prevent the other
+    # views from working.
     discover_views()
-    view_cls = registry.get(settings.display_view)
-    if view_cls is None:
+
+    views: list[BaseView] = []
+    for name in settings.display_views:
+        view_cls = registry.get(name)
+        if view_cls is None:
+            log.warning(
+                "View '%s' not found, skipping. Available: %s",
+                name,
+                ", ".join(registry.available()) or "(none)",
+            )
+            continue
+        views.append(view_cls(settings))
+
+    if not views:
         log.error(
-            "View '%s' not found. Available views: %s",
-            settings.display_view,
+            "No valid views configured. Available: %s",
             ", ".join(registry.available()) or "(none)",
         )
         sys.exit(1)
 
-    view = view_cls(settings)
-    log.info("Using view: %s (%s)", view.name, view.description)
+    if len(views) == 1:
+        log.info("Using view: %s (%s)", views[0].name, views[0].description)
+    else:
+        rotation = " -> ".join(v.name for v in views)
+        log.info(
+            "View rotation: %s (%ds each)",
+            rotation,
+            settings.refresh_interval,
+        )
 
     # Create display
     display = create_display(preview_mode=settings.preview_mode)
 
-    # Main loop
+    # Main loop — rotate through the configured views, advancing to the
+    # next view on each refresh cycle.
+    view_index = 0
     while not _shutdown:
+        view = views[view_index]
         try:
-            log.info("Rendering view: %s", view.name)
+            log.info("Rendering view %d/%d: %s", view_index + 1, len(views), view.name)
             image = view.render(DISPLAY_WIDTH, DISPLAY_HEIGHT)
             display.update(image)
             log.info("Display updated, sleeping %ds", settings.refresh_interval)
@@ -79,6 +102,10 @@ def main() -> None:
             break
         except Exception:
             log.exception("Error during render/update cycle")
+
+        view_index += 1
+        if view_index >= len(views):
+            view_index = 0
 
         # Sleep in short intervals so we can respond to shutdown signals
         elapsed = 0
