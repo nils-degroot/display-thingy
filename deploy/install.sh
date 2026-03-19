@@ -37,7 +37,7 @@ fi
 
 # Generate systemd-compatible env file from .envrc
 echo "Creating environment file at ${ENV_FILE}..."
-grep '^export ' "${PROJECT_DIR}/.envrc" | sed 's/^export //' > "${ENV_FILE}"
+grep '^export ' "${PROJECT_DIR}/.envrc" | sed -e 's/^export //' -e 's/[[:space:]]*#.*$//' > "${ENV_FILE}"
 chmod 600 "${ENV_FILE}"
 echo "  Done (permissions set to 600)."
 

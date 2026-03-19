@@ -10,7 +10,6 @@ export REFRESH_INTERVAL="900"
 # export LOCATION_NAME="Almere"
 # export UNITS="metric"  # metric / imperial / standard
 # export LANG="en"
-# export PREVIEW_MODE="true"  # Force preview mode even on Pi
 
 # CalDAV (required for "tasks" view — works with Nextcloud, Radicale, etc.)
 # export CALDAV_URL="https://cloud.example.com"

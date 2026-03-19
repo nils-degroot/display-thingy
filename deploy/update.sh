@@ -61,7 +61,7 @@ if [ ! -f "${PROJECT_DIR}/.envrc" ]; then
     echo "Warning: ${PROJECT_DIR}/.envrc not found, skipping env file generation."
 else
     echo "Updating environment file at ${ENV_FILE}..."
-    grep '^export ' "${PROJECT_DIR}/.envrc" | sed 's/^export //' > "${ENV_FILE}"
+    grep '^export ' "${PROJECT_DIR}/.envrc" | sed -e 's/^export //' -e 's/[[:space:]]*#.*$//' > "${ENV_FILE}"
     chmod 600 "${ENV_FILE}"
     echo "  Done (permissions set to 600)."
 fi

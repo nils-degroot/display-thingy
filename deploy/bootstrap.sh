@@ -86,19 +86,21 @@ ensure_repo() {
 
 
 install_waveshare_driver() {
-    local tmpdir
-    tmpdir="$(mktemp -d)"
+    local cache_dir="${HOME}/.cache/display-thingy"
+    local repo_dir="${cache_dir}/e-Paper"
 
-    cleanup() {
-        rm -rf "${tmpdir}" || true
-    }
-    trap cleanup EXIT
+    mkdir -p "${cache_dir}"
 
     info "Installing Waveshare e-paper driver..."
-    git clone "${WAVESHARE_REPO}" "${tmpdir}/e-Paper"
+    if [ -d "${repo_dir}/.git" ]; then
+        info "Updating cached Waveshare repo at ${repo_dir}..."
+        git -C "${repo_dir}" pull
+    else
+        rm -rf "${repo_dir}"
+        git clone "${WAVESHARE_REPO}" "${repo_dir}"
+    fi
 
-    local driver_dir
-    driver_dir="${tmpdir}/e-Paper/RaspberryPi_JetsonNano/python"
+    local driver_dir="${repo_dir}/RaspberryPi_JetsonNano/python"
     if [ ! -d "${driver_dir}" ]; then
         die "Waveshare repo layout changed (missing ${driver_dir})."
     fi
