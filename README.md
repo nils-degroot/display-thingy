@@ -115,7 +115,7 @@ order with the `DISPLAY_VIEWS` env var (comma-separated):
 
 ```bash
 export DISPLAY_VIEWS="weather"                  # single view (default)
-export DISPLAY_VIEWS="weather,wikipedia,tasks,hackernews,github,rss,wikiquote,wiktionary,calendar,xkcd"  # rotate through all
+export DISPLAY_VIEWS="weather,wikipedia,tasks,hackernews,github,rss,wikiquote,wiktionary,calendar,xkcd,system"  # rotate through all
 ```
 
 Other global display settings:
@@ -253,6 +253,19 @@ cropping. The title and alt text (the hover text from the website) are
 shown in a footer bar below the image. Fetches directly from the
 [xkcd JSON API](https://xkcd.com/json.html). No additional
 configuration is needed -- this view has no required env vars.
+
+### `system` -- System stats dashboard
+
+Displays a dashboard of local system information: CPU usage and
+temperature, memory and disk utilisation (with progress bars), network
+interfaces with IP addresses, and system uptime. Uses
+[psutil](https://github.com/giampaolo/psutil) to collect stats. No
+additional configuration is needed -- this view has no required env
+vars.
+
+CPU temperature is read from the SoC thermal sensor (available on
+Raspberry Pi and most Linux systems). On machines without temperature
+sensors, the value is shown as "N/A".
 
 ## Development
 

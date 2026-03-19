@@ -25,7 +25,8 @@ src/display_thingy/
     ├── rss.py           # RSS/Atom feed reader
     ├── wikiquote.py     # Wikiquote Quote of the Day
     ├── wiktionary.py    # Wiktionary Word of the Day
-    └── xkcd.py          # xkcd latest comic
+    ├── xkcd.py          # xkcd latest comic
+    └── system.py        # Local system stats dashboard (CPU, memory, disk, network, uptime)
 
 deploy/
 ├── install.sh           # First-time systemd service installation
