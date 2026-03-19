@@ -22,7 +22,8 @@ src/display_thingy/
     ├── tasks.py         # CalDAV VTODO task list
     ├── hackernews.py    # Hacker News top stories
     ├── wikiquote.py     # Wikiquote Quote of the Day
-    └── wiktionary.py    # Wiktionary Word of the Day
+    ├── wiktionary.py    # Wiktionary Word of the Day
+    └── xkcd.py          # xkcd latest comic
 
 deploy/
 ├── install.sh           # First-time systemd service installation
@@ -141,3 +142,14 @@ cp .envrc.example .envrc  # fill in at least OPENWEATHERMAP_KEY
 source .envrc
 uv run display-thingy
 ```
+
+## Documentation
+
+When adding or modifying views, configuration fields, or user-facing
+features, always update `README.md` to reflect the changes. This
+includes:
+
+- Adding/removing/renaming a view section under **Views**.
+- Updating the `DISPLAY_VIEWS` example line to list all available views.
+- Documenting new env vars in the relevant view's config table.
+- Updating setup instructions if dependencies or install steps change.

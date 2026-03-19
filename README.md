@@ -115,7 +115,7 @@ order with the `DISPLAY_VIEWS` env var (comma-separated):
 
 ```bash
 export DISPLAY_VIEWS="weather"                  # single view (default)
-export DISPLAY_VIEWS="weather,wikipedia,tasks,hackernews,wikiquote,wiktionary,calendar"  # rotate through seven
+export DISPLAY_VIEWS="weather,wikipedia,tasks,hackernews,wikiquote,wiktionary,calendar,xkcd"  # rotate through all
 ```
 
 Other global display settings:
@@ -208,6 +208,14 @@ Multi-level definitions (label-only headings with sub-definitions) are
 promoted and labelled automatically. The font size adapts for words
 with many definitions. No additional configuration is needed -- this
 view has no required env vars.
+
+### `xkcd` -- xkcd latest comic
+
+Displays the latest xkcd comic, scaled to fit the display without
+cropping. The title and alt text (the hover text from the website) are
+shown in a footer bar below the image. Fetches directly from the
+[xkcd JSON API](https://xkcd.com/json.html). No additional
+configuration is needed -- this view has no required env vars.
 
 ## Development
 
