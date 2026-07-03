@@ -62,12 +62,11 @@ def discover_collections(
     list[tuple[str, str]]
         A list of ``(display_name, collection_url)`` tuples.
     """
-    calendar_home = f"{base_url}/remote.php/dav/calendars/{username}/"
-    log.info("Discovering %s collections at %s", component_type, calendar_home)
+    log.info("Discovering %s collections at %s", component_type, base_url)
 
     response = client.request(
         "PROPFIND",
-        calendar_home,
+        base_url,
         content=PROPFIND_XML,
         headers={
             "Content-Type": "application/xml; charset=utf-8",
